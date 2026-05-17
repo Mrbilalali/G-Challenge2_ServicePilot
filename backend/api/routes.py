@@ -17,6 +17,10 @@ router = APIRouter()
 # --- Request Models ---
 class ServiceRequest(BaseModel):
     message: str
+    booking_step: Optional[int] = 0
+    selected_tech_name: Optional[str] = None
+    selected_tech_rate: Optional[float] = None
+    selected_time_slot: Optional[str] = None
 
 class FeedbackRequest(BaseModel):
     rating: int  # 1-5
@@ -30,7 +34,13 @@ async def create_request(req: ServiceRequest):
     """Submit a natural-language service request. Triggers the full agent pipeline."""
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
-    result = await process_service_request(req.message)
+    result = await process_service_request(
+        req.message,
+        booking_step=req.booking_step,
+        selected_tech_name=req.selected_tech_name,
+        selected_tech_rate=req.selected_tech_rate,
+        selected_time_slot=req.selected_time_slot
+    )
     return result
 
 

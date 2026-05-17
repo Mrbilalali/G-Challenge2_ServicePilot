@@ -250,29 +250,17 @@ export default function HomeScreen() {
 
       // 1. Conversational Booking State Machine (Slots & Escrow)
       if (bookingStep === 1) {
-        // Checking for slot timing or user's custom preference
-        let slot = "10:00 AM";
-        const customTime = extractTimePreference(userMsg);
-        if (customTime) {
-          slot = customTime;
-        } else if (lowerMsg.includes("1:30") || lowerMsg.includes("2") || lowerMsg.includes("afternoon")) {
-          slot = "1:30 PM";
-        } else if (lowerMsg.includes("5") || lowerMsg.includes("evening")) {
-          slot = "5:00 PM";
-        }
-        
-        setSelectedTimeSlot(slot);
-        setBookingStep(2);
-        
-        const platformFee = selectedTechRate * 0.1;
-        const total = selectedTechRate + platformFee;
-        
+        const result = await submitRequest(userMsg, bookingStep, selectedTechName, selectedTechRate, selectedTimeSlot);
         setTimeout(() => {
+          if (result.action === "LOCK_SLOT" && result.time_slot) {
+            setSelectedTimeSlot(result.time_slot);
+            setBookingStep(2);
+          }
           setMessages((prev) => [
             ...prev,
             {
               role: "agent",
-              text: `Slot locked for tomorrow at ${slot}.\n\nEscrow Hold Summary:\n• Base Rate: Rs. ${selectedTechRate}\n• Protection Fee (10%): Rs. ${platformFee}\n• Total Hold: Rs. ${total}\n\nWould you like to authorize locking Rs. ${total} in platform Escrow balance to confirm? Reply "YES" or "AUTHORIZE" to secure.`
+              text: result.message || "Assalam o Alaikum! Please confirm booking details."
             }
           ]);
           setLoading(false);
@@ -281,25 +269,22 @@ export default function HomeScreen() {
       }
 
       if (bookingStep === 2) {
-        if (lowerMsg.includes("yes") || lowerMsg.includes("auth") || lowerMsg.includes("pay") || lowerMsg.includes("confirm")) {
-          const total = selectedTechRate * 1.1;
-          const bookingId = 'booking_' + Math.random().toString(36).substr(2, 9);
-          
-          await createEscrow(bookingId, total, "wallet");
-          setBookingStep(0); 
-          setDetectedService(null);
-          setDetectedLocation(null);
-          
-          setTimeout(() => {
+        const result = await submitRequest(userMsg, bookingStep, selectedTechName, selectedTechRate, selectedTimeSlot);
+        setTimeout(() => {
+          if (result.action === "CONFIRM_BOOKING") {
+            setBookingStep(0);
+            setDetectedService(null);
+            setDetectedLocation(null);
+            
             setMessages((prev) => [
               ...prev,
               {
                 role: "system",
-                text: `[SYSTEM COGNITIVE TRACE LOG]\n- Scheduling Agent: Verified technician availability\n- Route Optimizer: Zero traffic conflicts detected\n- Escrow Hold Ledger: locked Rs. ${total} securely\n- Active Booking successfully created.`
+                text: `[SYSTEM COGNITIVE TRACE LOG]\n- Scheduling Agent: Verified technician availability\n- Route Optimizer: Zero traffic conflicts detected\n- Escrow Hold Ledger: locked Rs. ${(selectedTechRate * 1.1).toFixed(0)} securely\n- Active Booking successfully created.`
               },
               {
                 role: "agent",
-                text: `Booking secured successfully under Secure Escrow Protection!\n\n• Specialist: ${selectedTechName}\n• Schedule: tomorrow, ${selectedTimeSlot}\n\nYou can track details in My Bookings anytime.`
+                text: result.message
               }
             ]);
             
@@ -310,19 +295,18 @@ export default function HomeScreen() {
               setShowSuccessOverlay(false);
               router.push('/(tabs)/bookings');
             }, 3000);
-          }, 1000);
-          return;
-        } else {
-          setBookingStep(0);
-          setDetectedService(null);
-          setDetectedLocation(null);
-          setMessages((prev) => [
-            ...prev,
-            { role: "agent", text: "Booking selection cancelled. How else can I assist your home repair today?" }
-          ]);
-          setLoading(false);
-          return;
-        }
+          } else {
+            setBookingStep(0);
+            setDetectedService(null);
+            setDetectedLocation(null);
+            setMessages((prev) => [
+              ...prev,
+              { role: "agent", text: result.message || "Booking selection cancelled. How else can I assist your home repair today?" }
+            ]);
+            setLoading(false);
+          }
+        }, 1000);
+        return;
       }
 
       // 2. Active intake & conversational diagnostics flow (bookingStep === 0)

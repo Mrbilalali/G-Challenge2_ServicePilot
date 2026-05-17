@@ -12,15 +12,160 @@ from agents.recovery_agent import handle_cancellation
 from agents.feedback_agent import process_feedback
 from agents.discovery_agent import discover_external_providers
 from core.database import (db_create_booking, db_get_booking, db_update_booking, db_save_trace, db_get_trace,
-                           db_save_external_provider, db_log_search, db_get_wallet, db_get_bookings, db_create_escrow)
+                           db_save_external_provider, db_log_search, db_get_wallet, db_get_bookings, db_create_escrow,
+                           db_get_providers, db_update_wallet, db_add_wallet_transaction)
 
 
-async def process_service_request(user_message: str) -> dict:
+async def process_service_request(
+    user_message: str,
+    booking_step: int = 0,
+    selected_tech_name: str = None,
+    selected_tech_rate: float = None,
+    selected_time_slot: str = None
+) -> dict:
     """Full Agentic Core pipeline: parses message and executes database actions dynamically."""
     
     booking_id = f"bk_{uuid.uuid4().hex[:12]}"
     all_traces = []
     
+    # --- Dynamic Conversational Checkout State Machine ---
+    if booking_step == 1:
+        msg_lower = user_message.lower()
+        slot = "10:00 AM"
+        
+        # Detect time preference
+        if any(w in msg_lower for w in ["1:30", "afternoon", "dopahar", "ek", "do"]):
+            slot = "1:30 PM"
+        elif any(w in msg_lower for w in ["5", "evening", "sham", "panch"]):
+            slot = "5:00 PM"
+        elif any(w in msg_lower for w in ["6", "six", "che"]):
+            slot = "6:00 PM"
+        elif "10" in msg_lower or "morning" in msg_lower or "subah" in msg_lower:
+            slot = "10:00 AM"
+        else:
+            # Substring/custom time check
+            import re
+            time_match = re.search(r'(\d{1,2}(:\d{2})?\s*(am|pm|baje|o\'clock)?)', msg_lower)
+            if time_match:
+                slot = time_match.group(0).toUpperCase() if hasattr(time_match.group(0), 'toUpperCase') else time_match.group(0).upper()
+                
+        rate = selected_tech_rate or 1200
+        fee = rate * 0.1
+        total = rate + fee
+        
+        return {
+            "booking": None,
+            "action": "LOCK_SLOT",
+            "time_slot": slot,
+            "message": (
+                f"Thik hai! Main kal ke liye aapka slot '{slot}' lock kar rahi hoon.\n\n"
+                f"🧾 **Payment Receipt & Escrow Summary**:\n"
+                f"• Provider Base Rate: Rs. {rate}\n"
+                f"• Platform Safe Escrow Fee: Rs. {fee}\n"
+                f"• Total Amount to Hold: Rs. {total}\n\n"
+                f"Guaranteed Protection: Ye raqam platform security hold mein rahegi aur kaam mukammal hone par technician ko release hogi. "
+                f"Kya main booking confirm kar ke amount hold kar doon? Please reply with 'YES' or 'CONFIRM' to authorize."
+            ),
+            "traces": all_traces
+        }
+        
+    elif booking_step == 2:
+        msg_lower = user_message.lower()
+        if any(w in msg_lower for w in ["yes", "confirm", "auth", "pay", "ha", "haan", "krdo", "do"]):
+            rate = selected_tech_rate or 1200
+            fee = rate * 0.1
+            total = rate + fee
+            
+            # 1. Create Escrow Hold in DB
+            escrow = {
+                "id": f"esc_{uuid.uuid4().hex[:10]}",
+                "booking_id": booking_id,
+                "amount": total,
+                "payment_method": "wallet",
+                "status": "held",
+                "created_at": datetime.now().isoformat(),
+                "released_at": None,
+            }
+            db_create_escrow(escrow)
+            
+            # Deduct from customer wallet
+            wallet = db_get_wallet("customer")
+            new_bal = wallet["balance"] - total
+            db_update_wallet("customer", {"balance": max(0, new_bal), "pending": wallet.get("pending", 0) + total})
+            db_add_wallet_transaction("customer", {
+                "id": f"txn_{uuid.uuid4().hex[:6]}",
+                "type": "escrow_hold",
+                "amount": -total,
+                "desc": f"Escrow hold for booking {booking_id}",
+                "date": datetime.now().strftime("%Y-%m-%d"),
+            })
+            
+            # Find provider by name or create default mock
+            providers = db_get_providers()
+            matched_p = None
+            if selected_tech_name:
+                for p in providers:
+                    if selected_tech_name.lower() in p["name"].lower():
+                        matched_p = p
+                        break
+            if not matched_p:
+                matched_p = {
+                    "id": "PRV-001",
+                    "name": selected_tech_name or "Ahmed Cooling Services",
+                    "phone": "+92 300 4567891",
+                    "rating": 4.8,
+                    "review_count": 89,
+                }
+                
+            # 2. Create Booking in DB
+            booking = {
+                "id": booking_id,
+                "status": "confirmed",
+                "user_message": user_message,
+                "intent": {
+                    "service_type": "AC Repair",
+                    "location": "DHA Lahore",
+                    "urgency": "today",
+                    "confidence": 1.0,
+                },
+                "provider": matched_p,
+                "pricing": {
+                    "base_rate": rate,
+                    "platform_fee": fee,
+                    "total_amount": total,
+                },
+                "schedule": {
+                    "date": datetime.now().strftime("%Y-%m-%d"),
+                    "time_start": selected_time_slot or "10:00 AM",
+                },
+                "alternatives": [],
+                "excluded_providers": [],
+                "created_at": datetime.now().isoformat(),
+            }
+            db_create_booking(booking)
+            
+            return {
+                "booking": booking,
+                "action": "CONFIRM_BOOKING",
+                "message": (
+                    f"🎉 **Booking Confirmed under Secure Escrow Protection!**\n\n"
+                    f"Receipt & Scheduling Details:\n"
+                    f"• Specialist: {matched_p['name']}\n"
+                    f"• Time Slot Locked: tomorrow, {selected_time_slot or '10:00 AM'}\n"
+                    f"• Transaction ID: {escrow['id']}\n"
+                    f"• Secure Hold Payout: Rs. {total} (held securely)\n\n"
+                    f"I have successfully scheduled your booking. The specialist will arrive on time! You can track details in My Bookings."
+                ),
+                "traces": all_traces
+            }
+        else:
+            return {
+                "booking": None,
+                "action": "CANCEL_BOOKING",
+                "message": "Booking selection cancelled. How else can I assist your home repair today?",
+                "traces": all_traces
+            }
+
     # 1. Intent & Agentic Actions Parse
     intent_result = await parse_intent(user_message)
     intent = intent_result["intent"]

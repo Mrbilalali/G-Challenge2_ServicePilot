@@ -7,11 +7,23 @@ export const API_BASE = Platform.select({
   default: "http://172.17.100.187:8000/api"
 });
 
-export async function submitRequest(message: string) {
+export async function submitRequest(
+  message: string,
+  bookingStep?: number,
+  selectedTechName?: string,
+  selectedTechRate?: number,
+  selectedTimeSlot?: string
+) {
   const res = await fetch(`${API_BASE}/request`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({
+      message,
+      booking_step: bookingStep,
+      selected_tech_name: selectedTechName,
+      selected_tech_rate: selectedTechRate,
+      selected_time_slot: selectedTimeSlot
+    }),
   });
   return res.json();
 }
