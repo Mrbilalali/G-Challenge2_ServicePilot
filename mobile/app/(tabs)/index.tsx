@@ -461,6 +461,12 @@ export default function HomeScreen() {
       // Call standard Agentic AI submitRequest:
       const result = await submitRequest(userMsg);
       setTimeout(() => {
+        if (result.action === "BOOK_PROVIDER" && result.provider) {
+          setSelectedTechName(result.provider.name);
+          setSelectedTechRate(result.provider.rate);
+          setBookingStep(1);
+        }
+        
         setMessages((prev) => [
           ...prev,
           {

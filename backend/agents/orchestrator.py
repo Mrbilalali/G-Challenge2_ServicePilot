@@ -83,6 +83,56 @@ async def process_service_request(user_message: str) -> dict:
             "traces": all_traces,
         }
         
+    elif action == "BOOK_PROVIDER":
+        provider_q = intent.get("provider_name", "")
+        providers = db_get_providers()
+        matched = None
+        if provider_q:
+            pq = provider_q.lower()
+            for p in providers:
+                if pq in p["name"].lower():
+                    matched = p
+                    break
+        
+        if not matched:
+            # Fallback mock search for common providers
+            mock_providers = [
+                { "id": "PRV-001", "name": "Ahmed Cooling Services", "base_rate": 1200, "rating": 4.8, "area": "Lahore", "specialization": "AC Repair & Gas Refill Expert" },
+                { "id": "PRV-002", "name": "Bilal AC Repair & Gas Fillers", "base_rate": 800, "rating": 4.6, "area": "Lahore", "specialization": "Budget AC Servicing" },
+                { "id": "PRV-003", "name": "Lahore Pro Cooling Dispatch", "base_rate": 1400, "rating": 4.9, "area": "Lahore", "specialization": "Fast Emergency AC Fixing" },
+                { "id": "PLB-001", "name": "Asif Plumbing Masters", "base_rate": 1000, "rating": 4.7, "area": "Lahore", "specialization": "High-Pressure Leakage Expert" },
+                { "id": "PLB-002", "name": "DHA Plumbers Ltd", "base_rate": 750, "rating": 4.5, "area": "Lahore", "specialization": "General Piping & Drainage" },
+                { "id": "ELC-001", "name": "Zahid Electric Hub", "base_rate": 1100, "rating": 4.8, "area": "Lahore", "specialization": "Short Circuit & Fault Finder" }
+            ]
+            if provider_q:
+                pq = provider_q.lower()
+                for p in mock_providers:
+                    if pq in p["name"].lower():
+                        matched = p
+                        break
+        
+        if matched:
+            return {
+                "booking": None,
+                "action": "BOOK_PROVIDER",
+                "provider": {
+                    "id": matched.get("id"),
+                    "name": matched.get("name"),
+                    "rate": matched.get("base_rate") or matched.get("rate") or 1000,
+                    "rating": matched.get("rating", 4.7),
+                    "area": matched.get("area") or "DHA Lahore",
+                    "specialization": matched.get("specialization") or "Verified Specialist"
+                },
+                "message": f"You selected {matched['name']}.\n\nAvailable slots:\n• 10:00 AM (Recommended)\n• 1:30 PM\n• 5:00 PM\n\nWhich slot do you prefer? (You can also reply with a custom time, e.g., \"6 baje\")",
+                "traces": all_traces
+            }
+        else:
+            return {
+                "booking": None,
+                "message": f"Assalam o Alaikum! Main aapka bataya hua provider '{provider_q}' nahi dhoond saki. Please correct name batayein.",
+                "traces": all_traces
+            }
+        
     # RECOMMEND action: matching, pricing, scheduling
     # 2. Discovery
     discovery_trace = {
