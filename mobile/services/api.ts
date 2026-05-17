@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 // Auto-resolve API base based on the platform the app is running on.
 export const API_BASE = Platform.select({
   web: "http://localhost:8000/api",
-  android: "http://10.0.2.2:8000/api",
+  android: "http://172.17.100.187:8000/api",
   default: "http://172.17.100.187:8000/api"
 });
 
