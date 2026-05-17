@@ -458,14 +458,15 @@ export default function HomeScreen() {
         }
       }
 
-      // If they ask a general conversational prompt but no service matches, call standard submitRequest:
+      // Call standard Agentic AI submitRequest:
       const result = await submitRequest(userMsg);
       setTimeout(() => {
         setMessages((prev) => [
           ...prev,
           {
             role: "agent",
-            text: `Assalam o Alaikum! I am here to help you get the best home maintenance support. ${result.message || "Aapko AC repair, electrician, ya plumbing mein guidance chahiye? Please details or location batayein!"}`
+            text: result.message || "Assalam o Alaikum! I am here to help you get the best home maintenance support.",
+            data: result.providers ? { providers: result.providers } : undefined
           }
         ]);
         setLoading(false);

@@ -1,6 +1,6 @@
 """
-Intent Understanding Agent
-Parses multilingual requests (Urdu, Roman Urdu, English) and extracts structured intent.
+Intent Understanding & Agentic AI Core
+Parses multilingual requests (Urdu, Roman Urdu, English) and extracts structured intent and agentic actions.
 """
 import json
 import google.generativeai as genai
@@ -8,41 +8,45 @@ from core import settings
 
 genai.configure(api_key=settings.GEMINI_API_KEY)
 
-SYSTEM_PROMPT = """You are an intent extraction agent for a home-services platform in Pakistan.
-The user may write in English, Urdu (Roman script), or mix of both.
+SYSTEM_PROMPT = """You are the master Agentic AI Core of ServicePilot, a premium home-services platform in Pakistan.
+You are trained in ML/DL and agentic orchestration. You speak with a warm, friendly, Urdu/English mix tone.
 
-Extract the following fields from their message. Return ONLY valid JSON, nothing else.
+Your goal is to parse the user's message, provide conversational guidance, and return an Action command if they want to control their bookings, wallet, or match specialists.
 
-  "service_type": "AC Repair" | "Plumbing" | "Electrician" | "Other",
-  "issue_description": "<short English summary of the problem>",
-  "location": "<area / neighborhood mentioned, or empty string>",
-  "urgency": "emergency" | "today" | "tomorrow" | "this_week" | "flexible",
-  "time_preference": "<morning / afternoon / evening / specific time, or empty string>",
-  "language_detected": "english" | "roman_urdu" | "urdu_mix" | "gibberish",
-  "confidence": <float 0-1>,
-  "clarification_question": "<If confidence is below 0.5, provide a polite question in Roman Urdu asking for clarity, otherwise empty string>"
+Rules for your conversational "reply":
+1. Write in a warm, concise, Urdu/English conversational mix.
+2. Absolutely DO NOT use markdown bold markers "**" anywhere in your text.
+3. Optimize the text using clean bullet points (•) for lists or steps. Keep it short and readable on a mobile screen.
+4. If they ask for general guidance or troubleshooting (e.g. AC thanda nahi kar raha, pipe leak, electric spark safety), explain the safety precautions and guide them clearly using simple bullets.
+
+You must return ONLY a valid JSON object matching this schema:
+{
+  "reply": "<friendly, conversational explanation or safety guidance in Urdu/English mix, no bold asterisks>",
+  "action": "RECOMMEND" | "CANCEL" | "CHECK_STATUS" | "WALLET" | "NONE",
+  "service_type": "AC Repair" | "Plumbing" | "Electrician" | null,
+  "location": "<neighborhood or area name if mentioned, otherwise null>",
+  "booking_id": "<booking ID if mentioned, otherwise null>"
 }
 
 Examples:
-- "AC thanda nahi kar raha, kal morning DHA mein technician chahiye" →
-  {"service_type":"AC Repair","issue_description":"AC not cooling properly","location":"DHA","urgency":"tomorrow","time_preference":"morning","language_detected":"roman_urdu","confidence":0.95}
+- "hi" ->
+  {"reply": "Assalam o Alaikum! I am here to help you get the best home maintenance support. Aapko aaj kis service (AC repair, plumbing, ya electrician) mein madad chahiye? Please details batayein!", "action": "NONE", "service_type": null, "location": null, "booking_id": null}
 
-- "Need an electrician ASAP, short circuit in kitchen" →
-  {"service_type":"Electrician","issue_description":"Short circuit in kitchen","location":"","urgency":"emergency","time_preference":"","language_detected":"english","confidence":0.98}
+- "AC thanda nahi kar raha DHA Phase 5 mein" ->
+  {"reply": "Assalam o Alaikum! AC thanda na karne ki wajohat block filter, refrigerant leak ya compressor load issue ho sakti hain. safety ke liye heavy usage temporary band karein. DHA Phase 5 mein top verified specialists check karti hoon.", "action": "RECOMMEND", "service_type": "AC Repair", "location": "DHA Phase 5", "booking_id": null}
 
-- "Pani ka pipe leak ho raha hai garden town mein" →
-  {"service_type":"Plumbing","issue_description":"Water pipe leaking","location":"Garden Town","urgency":"today","time_preference":"","language_detected":"roman_urdu","confidence":0.93, "clarification_question": ""}
+- "plumber cancel kar do please" ->
+  {"reply": "Thik hai, main aapka plumbing booking cancel kar ke refund initiate kar rahi hoon.", "action": "CANCEL", "service_type": "Plumbing", "location": null, "booking_id": null}
 
-- "asdfghjk dsfs" →
-  {"service_type":"Other","issue_description":"","location":"","urgency":"flexible","time_preference":"","language_detected":"gibberish","confidence":0.1, "clarification_question": "Maazrat, main aapki baat samajh nahi saka. Kya aap dobara bata saktay hain aapko kaunsi service chahiye?"}
+- "mera balance kitna hai wallet mein" ->
+  {"reply": "Main aapke wallet status aur current balance details check kar ke batati hoon.", "action": "WALLET", "service_type": null, "location": null, "booking_id": null}
 """
 
-
 async def parse_intent(user_message: str) -> dict:
-    """Parse a user's natural language request into structured intent."""
+    """Parse a user's natural language request into structured intent and agentic actions."""
     
     trace = {
-        "agent": "IntentAgent",
+        "agent": "AgenticCore",
         "input": user_message,
         "reasoning": [],
     }
@@ -52,8 +56,8 @@ async def parse_intent(user_message: str) -> dict:
         response = model.generate_content(
             f"{SYSTEM_PROMPT}\n\nUser message: \"{user_message}\"",
             generation_config=genai.types.GenerationConfig(
-                temperature=0.1,
-                max_output_tokens=500,
+                temperature=0.2,
+                max_output_tokens=800,
             )
         )
         
@@ -73,89 +77,40 @@ async def parse_intent(user_message: str) -> dict:
         
         intent = json.loads(raw)
         
-        trace["reasoning"].append(f"Detected language: {intent.get('language_detected', 'unknown')}")
-        trace["reasoning"].append(f"Extracted service: {intent.get('service_type')} with {intent.get('confidence', 0)*100:.0f}% confidence")
-        trace["reasoning"].append(f"Location mentioned: {intent.get('location', 'not specified')}")
-        trace["reasoning"].append(f"Urgency level: {intent.get('urgency', 'flexible')}")
+        trace["reasoning"].append(f"Agentic Action parsed: {intent.get('action', 'NONE')}")
+        trace["reasoning"].append(f"Service detected: {intent.get('service_type', 'None')}")
+        trace["reasoning"].append(f"Reply generated: {intent.get('reply')[:60]}...")
         
-        confidence = intent.get('confidence', 0)
-        if confidence < 0.5:
-            trace["reasoning"].append("⚠ LOW CONFIDENCE: Input is too vague or unreadable.")
-            trace["status"] = "failed"
-            return {"intent": intent, "trace": trace, "requires_clarification": True}
-            
         trace["output"] = intent
         trace["status"] = "success"
         
         return {"intent": intent, "trace": trace, "requires_clarification": False}
         
-    except json.JSONDecodeError as e:
-        trace["reasoning"].append(f"Failed to parse LLM output as JSON: {str(e)}")
-        trace["reasoning"].append(f"Raw output: {raw[:200]}")
+    except Exception as e:
+        trace["reasoning"].append(f"Gemini API parse error: {str(e)}")
         trace["status"] = "fallback"
         
         # Smart keyword-based fallback so the pipeline never breaks
         msg_lower = user_message.lower()
-        service = "Other"
-        if any(w in msg_lower for w in ["ac", "cooling", "thanda", "air condition"]):
-            service = "AC Repair"
-        elif any(w in msg_lower for w in ["electric", "bijli", "wiring", "short circuit", "switch", "socket"]):
-            service = "Electrician"
-        elif any(w in msg_lower for w in ["plumb", "pani", "pipe", "leak", "nulka", "washroom"]):
-            service = "Plumbing"
-        elif any(w in msg_lower for w in ["clean", "safai"]):
-            service = "Cleaning"
-        elif any(w in msg_lower for w in ["mechanic", "car", "bike", "gaari", "engine"]):
-            service = "Car Mechanic"
-            
-        urgency = "flexible"
-        if any(w in msg_lower for w in ["urgent", "asap", "abhi", "emergency", "foran"]):
-            urgency = "emergency"
-        elif any(w in msg_lower for w in ["today", "aaj"]):
-            urgency = "today"
-        elif any(w in msg_lower for w in ["tomorrow", "kal"]):
-            urgency = "tomorrow"
-            
-        # Extract location keywords
-        import re as re2
-        location = ""
-        loc_patterns = ["dha", "bahria", "gulberg", "johar", "model town", "garden town", "g-13", "f-8", "f-10", "i-8", "defence"]
-        for loc in loc_patterns:
-            if loc in msg_lower:
-                location = loc.upper() if len(loc) <= 4 else loc.title()
-                break
-
-        fallback = {
-            "service_type": service,
-            "issue_description": user_message[:100],
-            "location": location,
-            "urgency": urgency,
-            "time_preference": "",
-            "language_detected": "english",
-            "confidence": 0.75,
-            "clarification_question": ""
-        }
+        service = None
+        action = "NONE"
         
-        trace["reasoning"].append(f"⚡ Keyword fallback activated: {service} in {location or 'unspecified'}")
-        return {"intent": fallback, "trace": trace, "requires_clarification": False}
-    
-    except Exception as e:
-        trace["reasoning"].append(f"Gemini API error: {str(e)}")
-        trace["status"] = "fallback"
-        
-        # Same keyword fallback for API errors too
-        msg_lower = user_message.lower()
-        service = "Other"
-        if any(w in msg_lower for w in ["ac", "cooling", "thanda"]):
+        if any(w in msg_lower for w in ["ac", "cooling", "thanda", "compressor"]):
             service = "AC Repair"
-        elif any(w in msg_lower for w in ["electric", "bijli", "wiring", "electrician"]):
+            action = "RECOMMEND"
+        elif any(w in msg_lower for w in ["electric", "bijli", "wiring", "short", "light"]):
             service = "Electrician"
-        elif any(w in msg_lower for w in ["plumb", "pani", "pipe", "plumber"]):
+            action = "RECOMMEND"
+        elif any(w in msg_lower for w in ["plumb", "pani", "pipe", "leak", "tap"]):
             service = "Plumbing"
-
-        urgency = "flexible"
-        if any(w in msg_lower for w in ["urgent", "asap", "abhi", "emergency"]):
-            urgency = "emergency"
+            action = "RECOMMEND"
+            
+        if any(w in msg_lower for w in ["cancel", "kharij", "wapas"]):
+            action = "CANCEL"
+        elif any(w in msg_lower for w in ["balance", "wallet", "paisa", "rupay"]):
+            action = "WALLET"
+        elif any(w in msg_lower for w in ["status", "track", "check"]):
+            action = "CHECK_STATUS"
             
         location = ""
         for loc in ["dha", "bahria", "gulberg", "johar", "model town"]:
@@ -164,14 +119,12 @@ async def parse_intent(user_message: str) -> dict:
                 break
 
         fallback = {
+            "reply": "Assalam o Alaikum! I am ready to assist. Please specify your home maintenance issue or booking action details.",
+            "action": action,
             "service_type": service,
-            "issue_description": user_message[:100],
-            "location": location,
-            "urgency": urgency,
-            "time_preference": "",
-            "language_detected": "unknown",
-            "confidence": 0.7,
-            "clarification_question": ""
+            "location": location or None,
+            "booking_id": None
         }
-        trace["reasoning"].append(f"⚡ Keyword fallback activated due to API error: {service}")
+        
+        trace["reasoning"].append(f"⚡ Keyword fallback activated: {action} / {service}")
         return {"intent": fallback, "trace": trace, "requires_clarification": False}

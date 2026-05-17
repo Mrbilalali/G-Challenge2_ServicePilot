@@ -11,27 +11,79 @@ from agents.scheduling_agent import schedule_booking
 from agents.recovery_agent import handle_cancellation
 from agents.feedback_agent import process_feedback
 from agents.discovery_agent import discover_external_providers
-from core.database import db_create_booking, db_get_booking, db_update_booking, db_save_trace, db_get_trace, db_save_external_provider, db_log_search
+from core.database import (db_create_booking, db_get_booking, db_update_booking, db_save_trace, db_get_trace,
+                           db_save_external_provider, db_log_search, db_get_wallet, db_get_bookings, db_create_escrow)
 
 
 async def process_service_request(user_message: str) -> dict:
-    """Full pipeline: Intent → Match → Price → Schedule → Book."""
+    """Full Agentic Core pipeline: parses message and executes database actions dynamically."""
     
     booking_id = f"bk_{uuid.uuid4().hex[:12]}"
     all_traces = []
     
-    # 1. Intent
+    # 1. Intent & Agentic Actions Parse
     intent_result = await parse_intent(user_message)
     intent = intent_result["intent"]
     all_traces.append(intent_result["trace"])
     
-    if intent_result.get("requires_clarification"):
+    action = intent.get("action", "NONE")
+    
+    # ML/DL Agentic Multi-Task Actions execution
+    if action == "CANCEL":
+        bookings = db_get_bookings()
+        active = [b for b in bookings if b["status"] not in ["cancelled", "completed"]]
+        if active:
+            target_booking = active[0]
+            # Call cancel_and_recover to cancel and simulate dynamic scheduling/escrow release
+            recovery_res = await cancel_and_recover(target_booking["id"])
+            return {
+                "booking": recovery_res.get("booking"),
+                "message": f"Assalam o Alaikum! I have cancelled your active booking {target_booking['id']} successfully.\n\n• Secure Escrow Refunded: Rs. {target_booking['pricing']['total_amount']}\n• Status: Escrow Protection Refund Completed",
+                "traces": all_traces + recovery_res.get("traces", []),
+            }
+        else:
+            return {
+                "booking": None,
+                "message": "Assalam o Alaikum! You don't have any active bookings to cancel right now.",
+                "traces": all_traces,
+            }
+            
+    elif action == "CHECK_STATUS":
+        bookings = db_get_bookings()
+        if bookings:
+            details = []
+            for b in bookings[:3]:
+                status_capitalized = b['status'].upper()
+                details.append(f"• ID: {b['id']}\n  Service: {b['intent'].get('service_type', 'Home Service')}\n  Specialist: {b['provider']['name']}\n  Status: {status_capitalized}")
+            details_str = "\n".join(details)
+            return {
+                "booking": bookings[0],
+                "message": f"Assalam o Alaikum! Here are your active booking records:\n\n{details_str}",
+                "traces": all_traces,
+            }
+        else:
+            return {
+                "booking": None,
+                "message": "Assalam o Alaikum! You have no active bookings at the moment. How can I help you book one?",
+                "traces": all_traces,
+            }
+            
+    elif action == "WALLET":
+        wallet = db_get_wallet("customer")
         return {
             "booking": None,
-            "message": intent.get("clarification_question", "Could you please clarify what service you need?"),
+            "message": f"Assalam o Alaikum! Here is your wallet transaction summary:\n\n• Available Balance: Rs. {wallet['balance']}\n• Locked Escrow Funds: Rs. {wallet['pending']}\n• Safety Deposit protection active",
             "traces": all_traces,
         }
-    
+        
+    elif action == "NONE":
+        return {
+            "booking": None,
+            "message": intent.get("reply", "Assalam o Alaikum! I am here to help you get the best home maintenance support."),
+            "traces": all_traces,
+        }
+        
+    # RECOMMEND action: matching, pricing, scheduling
     # 2. Discovery
     discovery_trace = {
         "agent": "DiscoveryAgent",
@@ -78,115 +130,23 @@ async def process_service_request(user_message: str) -> dict:
             "traces": all_traces,
         }
     
-    top_provider = providers[0]
-    
-    # 4. Price & Schedule (Top Provider)
-    price_result = await calculate_price(top_provider, intent)
-    all_traces.append(price_result["trace"])
-    
-    schedule_result = await schedule_booking(top_provider, intent)
-    all_traces.append(schedule_result["trace"])
-    
-    # Calculate prices for alternatives to show in Provider List
-    alternatives = []
-    for p in providers[1:4]:
+    # Format and calculate prices for options to display as carousel cards
+    matched_list = []
+    for p in providers[:3]:
         p_price = await calculate_price(p, intent)
-        alternatives.append({
+        matched_list.append({
             "id": p["id"],
             "name": p["name"],
-            "score": p.get("match_score", 0),
-            "distance_km": p.get("distance_km", 0),
-            "rating": p.get("rating", 0),
-            "reviews": p.get("reviews", []),
-            "review_count": p.get("review_count", 0),
-            "pricing": p_price["pricing"],
-            "is_external": p.get("is_external", False),
-            "phone": p.get("phone", ""),
-            "trust_score": p.get("trust_score", 0),
-            "is_open_now": p.get("is_open_now", True),
-            "operating_hours": p.get("operating_hours", ""),
-            "next_available_time": p.get("next_available_time"),
-            "address": p.get("address", ""),
-            "specializations": p.get("specializations", []),
-            "is_verified": p.get("is_verified", False),
-            "verified_status": p.get("verified_status", ""),
-            "verification_badge": p.get("verification_badge", ""),
-            "why_recommended": p.get("why_recommended", []),
-            "punctuality_score": p.get("punctuality_score", 0),
-            "reliability_score": p.get("reliability_score", 0),
-            "response_time_minutes": p.get("response_time_minutes", 0),
-            "total_jobs_completed": p.get("total_jobs_completed", 0),
-            "certifications": p.get("certifications", []),
-            "customer_repeat_rate": p.get("customer_repeat_rate", 0),
-            "cancellation_rate": p.get("cancellation_rate", 0),
-            "on_time_score": p.get("on_time_score", 0),
-            "recent_reviews": p.get("recent_reviews", []),
+            "rate": p_price["pricing"]["total_amount"],
+            "rating": p.get("rating", 4.7),
+            "area": intent.get("location") or p.get("area") or "DHA Lahore",
+            "specialization": p.get("specializations", ["Verified Specialist"])[0],
         })
-    
-    # 5. Notification
-    notif_trace = {
-        "agent": "NotificationAgent",
-        "input": {"provider": top_provider["name"], "status": "simulating_dispatch"},
-        "reasoning": [
-            f"Formatting booking confirmation SMS for user.",
-            f"Dispatching WhatsApp notification to provider {top_provider['name']}.",
-            "Simulating delivery receipts."
-        ],
-        "output": "Notifications scheduled successfully",
-        "status": "success"
-    }
-    all_traces.append(notif_trace)
-    
-    # 6. Create Booking
-    booking = {
-        "id": booking_id,
-        "status": "confirmed",
-        "user_message": user_message,
-        "intent": intent,
-        "provider": {
-            "id": top_provider["id"],
-            "name": top_provider["name"],
-            "phone": top_provider.get("phone", ""),
-            "rating": top_provider.get("rating", 0),
-            "reviews": top_provider.get("reviews", []),
-            "review_count": top_provider.get("review_count", 0),
-            "match_score": top_provider.get("match_score", 0),
-            "distance_km": top_provider.get("distance_km", 0),
-            "score_breakdown": top_provider.get("score_breakdown", {}),
-            "is_external": top_provider.get("is_external", False),
-            "trust_score": top_provider.get("trust_score", 0),
-            "is_open_now": top_provider.get("is_open_now", True),
-            "operating_hours": top_provider.get("operating_hours", ""),
-            "next_available_time": top_provider.get("next_available_time"),
-            "address": top_provider.get("address", ""),
-            "specializations": top_provider.get("specializations", []),
-            "is_verified": top_provider.get("is_verified", False),
-            "verified_status": top_provider.get("verified_status", ""),
-            "verification_badge": top_provider.get("verification_badge", ""),
-            "why_recommended": top_provider.get("why_recommended", []),
-            "punctuality_score": top_provider.get("punctuality_score", 0),
-            "reliability_score": top_provider.get("reliability_score", 0),
-            "response_time_minutes": top_provider.get("response_time_minutes", 0),
-            "total_jobs_completed": top_provider.get("total_jobs_completed", 0),
-            "certifications": top_provider.get("certifications", []),
-            "customer_repeat_rate": top_provider.get("customer_repeat_rate", 0),
-            "cancellation_rate": top_provider.get("cancellation_rate", 0),
-            "on_time_score": top_provider.get("on_time_score", 0),
-            "recent_reviews": top_provider.get("recent_reviews", []),
-        },
-        "pricing": price_result["pricing"],
-        "schedule": schedule_result["schedule"],
-        "alternatives": alternatives,
-        "excluded_providers": [],
-        "created_at": datetime.now().isoformat(),
-    }
-    
-    db_create_booking(booking)
-    db_save_trace({"booking_id": booking_id, "traces": all_traces, "created_at": datetime.now().isoformat()})
-    
+        
     return {
-        "booking": booking,
-        "message": f"Booking confirmed! {top_provider['name']} will arrive on {schedule_result['schedule']['date']} at {schedule_result['schedule']['time_start']}.",
+        "booking": None,
+        "message": intent.get("reply", f"Assalam o Alaikum! I've diagnosed that you need a {intent.get('service_type')} in {intent.get('location') or 'Lahore'}."),
+        "providers": matched_list,
         "traces": all_traces,
     }
 
