@@ -202,52 +202,6 @@ export default function HomeScreen() {
     setLoading(true);
 
     try {
-      const lowerMsg = userMsg.toLowerCase();
-      
-      // Helper function to extract phase / area location
-      const detectLocationFromText = (text: string): string | null => {
-        const lower = text.toLowerCase();
-        if (lower.includes("dha") || lower.includes("phase")) {
-          const phaseMatch = lower.match(/phase\s*\d{1,2}/);
-          return phaseMatch ? `DHA ${phaseMatch[0].toUpperCase()}` : "DHA Lahore";
-        }
-        if (lower.includes("gulberg")) return "Gulberg, Lahore";
-        if (lower.includes("johar town")) return "Johar Town, Lahore";
-        if (lower.includes("model town")) return "Model Town, Lahore";
-        if (lower.includes("cantt")) return "Cantt, Lahore";
-        if (lower.includes("bahria")) return "Bahria Town, Lahore";
-        return null;
-      };
-
-      // Helper function to detect service
-      const detectServiceFromText = (text: string): string | null => {
-        const lower = text.toLowerCase();
-        if (lower.includes("ac") || lower.includes("cool") || lower.includes("thanda") || lower.includes("gas") || lower.includes("compressor") || lower.includes("cooling") || lower.includes("heat")) {
-          return "AC Repair";
-        }
-        if (lower.includes("plumb") || lower.includes("leak") || lower.includes("pipe") || lower.includes("water") || lower.includes("sink") || lower.includes("tap") || lower.includes("paani")) {
-          return "Plumbing Service";
-        }
-        if (lower.includes("electr") || lower.includes("wire") || lower.includes("fault") || lower.includes("light") || lower.includes("board") || lower.includes("short") || lower.includes("current")) {
-          return "Electrician Service";
-        }
-        return null;
-      };
-
-      // Helper function to get service safety guidance
-      const getGuidanceText = (service: string): string => {
-        if (service === "AC Repair") {
-          return "AC cooling na karne ki wajohat air filter block hona, compressor overload issue, ya refrigerant gas leak hona ho sakti hain. Safety ke liye, heavy usage temporary band karein taake mazeed damage na ho.";
-        }
-        if (service === "Plumbing Service") {
-          return "Pipeline leakages ya tap dripping se moisture aur water damage barh sakti hai. Safety ke liye, please secondary control valve ko temporary band kar dein taake excess leakage ruk jaye.";
-        }
-        if (service === "Electrician Service") {
-          return "Electrical faults aur short circuits bohut sensitive hote hain aur isse wiring burn ka khatra hota hai. Safety ke liye, please local DB board se main breaker ko off kar dein.";
-        }
-        return "Home services safe operations checks key solutions checked.";
-      };
-
       // 1. Conversational Booking State Machine (Slots & Escrow)
       if (bookingStep === 1) {
         const result = await submitRequest(userMsg, bookingStep, selectedTechName, selectedTechRate, selectedTimeSlot);
@@ -310,141 +264,22 @@ export default function HomeScreen() {
       }
 
       // 2. Active intake & conversational diagnostics flow (bookingStep === 0)
-      const isGreeting = (text: string): boolean => {
-        const lower = text.toLowerCase().trim().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
-        return (
-          lower === "hi" ||
-          lower === "hello" ||
-          lower === "hey" ||
-          lower === "aoa" ||
-          lower === "assalam o alaikum" ||
-          lower === "assalam-o-alaikum" ||
-          lower === "salam" ||
-          lower === "greetings" ||
-          lower === "hlo" ||
-          lower === "yo"
-        );
-      };
-
-      if (isGreeting(userMsg)) {
-        setTimeout(() => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "agent",
-              text: `Assalam o Alaikum! I am here to help you. Aapko aaj kis service (AC repair, plumbing, ya electrician) mein madad chahiye? Please mujhe details batayein!`
-            }
-          ]);
-          setLoading(false);
-        }, 1000);
-        return;
-      }
-
-      const parsedService = detectServiceFromText(userMsg);
-      const parsedLocation = detectLocationFromText(userMsg);
-
-      // If we already have a service detected but need location:
-      if (detectedService && !detectedLocation && !parsedService) {
-        const confirmedLoc = parsedLocation || userMsg;
-        setDetectedLocation(confirmedLoc);
-        
-        let matchedProviders = [
-          { id: "PRV-001", name: "Ahmed Cooling Services", rate: 1200, rating: 4.8, area: confirmedLoc, specialization: "AC Repair & Gas Refill Expert" },
-          { id: "PRV-002", name: "Bilal AC Repair & Gas Fillers", rate: 800, rating: 4.6, area: confirmedLoc, specialization: "Budget AC Servicing" },
-          { id: "PRV-003", name: "Lahore Pro Cooling Dispatch", rate: 1400, rating: 4.9, area: confirmedLoc, specialization: "Fast Emergency AC Fixing" }
-        ];
-
-        if (detectedService === "Plumbing Service") {
-          matchedProviders = [
-            { id: "PLB-001", name: "Asif Plumbing Masters", rate: 1000, rating: 4.7, area: confirmedLoc, specialization: "High-Pressure Leakage Expert" },
-            { id: "PLB-002", name: "DHA Plumbers Ltd", rate: 750, rating: 4.5, area: confirmedLoc, specialization: "General Piping & Drainage" },
-            { id: "PLB-003", name: "Super Fast Plumber Lahore", rate: 1200, rating: 4.8, area: confirmedLoc, specialization: "Emergency Blockage Specialist" }
-          ];
-        } else if (detectedService === "Electrician Service") {
-          matchedProviders = [
-            { id: "ELC-001", name: "Zahid Electric Hub", rate: 1100, rating: 4.8, area: confirmedLoc, specialization: "Short Circuit & Fault Finder" },
-            { id: "ELC-002", name: "Kashif Quick Electricians", rate: 900, rating: 4.6, area: confirmedLoc, specialization: "DB Board & Wiring Expert" },
-            { id: "ELC-003", name: "DHA Electric Techs", rate: 1300, rating: 4.9, area: confirmedLoc, specialization: "Premium Electrical Installations" }
-          ];
-        }
-
-        setTimeout(() => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "agent",
-              text: `Location set to ${confirmedLoc}.\n\nHere are our top active partners in your area. Tap "Book Service" on your preferred specialist:`,
-              data: {
-                providers: matchedProviders
-              }
-            }
-          ]);
-          setLoading(false);
-        }, 1000);
-        return;
-      }
-
-      // If a service type is detected:
-      if (parsedService) {
-        setDetectedService(parsedService);
-        const confirmedLoc = parsedLocation || detectedLocation;
-        
-        if (confirmedLoc) {
-          setDetectedLocation(confirmedLoc);
-          
-          let matchedProviders = [
-            { id: "PRV-001", name: "Ahmed Cooling Services", rate: 1200, rating: 4.8, area: confirmedLoc, specialization: "AC Repair & Gas Refill Expert" },
-            { id: "PRV-002", name: "Bilal AC Repair & Gas Fillers", rate: 800, rating: 4.6, area: confirmedLoc, specialization: "Budget AC Servicing" },
-            { id: "PRV-003", name: "Lahore Pro Cooling Dispatch", rate: 1400, rating: 4.9, area: confirmedLoc, specialization: "Fast Emergency AC Fixing" }
-          ];
-
-          if (parsedService === "Plumbing Service") {
-            matchedProviders = [
-              { id: "PLB-001", name: "Asif Plumbing Masters", rate: 1000, rating: 4.7, area: confirmedLoc, specialization: "High-Pressure Leakage Expert" },
-              { id: "PLB-002", name: "DHA Plumbers Ltd", rate: 750, rating: 4.5, area: confirmedLoc, specialization: "General Piping & Drainage" },
-              { id: "PLB-003", name: "Super Fast Plumber Lahore", rate: 1200, rating: 4.8, area: confirmedLoc, specialization: "Emergency Blockage Specialist" }
-            ];
-          } else if (parsedService === "Electrician Service") {
-            matchedProviders = [
-              { id: "ELC-001", name: "Zahid Electric Hub", rate: 1100, rating: 4.8, area: confirmedLoc, specialization: "Short Circuit & Fault Finder" },
-              { id: "ELC-002", name: "Kashif Quick Electricians", rate: 900, rating: 4.6, area: confirmedLoc, specialization: "DB Board & Wiring Expert" },
-              { id: "ELC-003", name: "DHA Electric Techs", rate: 1300, rating: 4.9, area: confirmedLoc, specialization: "Premium Electrical Installations" }
-            ];
-          }
-
-          setTimeout(() => {
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "agent",
-                text: `Assalam o Alaikum! I've matched your request for ${parsedService} in ${confirmedLoc}.\n\n💡 Safety tips:\n• ${getGuidanceText(parsedService)}\n\nHere are the top verified partners available in your area:`,
-                data: {
-                  providers: matchedProviders
-                }
-              }
-            ]);
-            setLoading(false);
-          }, 1000);
-          return;
-        } else {
-          // Location not specified yet! Ask the user for their location conversationaly!
-          setTimeout(() => {
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "agent",
-                text: `Assalam o Alaikum! I've registered your request for ${parsedService}.\n\n💡 Safety tips:\n• ${getGuidanceText(parsedService)}\n\nPlease reply with your specific location (e.g., DHA Phase 5, Gulberg) so I can find active partners in your area.`
-              }
-            ]);
-            setLoading(false);
-          }, 1000);
-          return;
-        }
+      let apiMsg = userMsg;
+      if (detectedService && !detectedLocation) {
+        // Transparent session bridge: append service context when user replies with location
+        apiMsg = `${detectedService} in ${userMsg}`;
       }
 
       // Call standard Agentic AI submitRequest:
-      const result = await submitRequest(userMsg);
+      const result = await submitRequest(apiMsg);
       setTimeout(() => {
+        if (result.service_type) {
+          setDetectedService(result.service_type);
+        }
+        if (result.location) {
+          setDetectedLocation(result.location);
+        }
+
         if (result.action === "BOOK_PROVIDER" && result.provider) {
           setSelectedTechName(result.provider.name);
           setSelectedTechRate(result.provider.rate);

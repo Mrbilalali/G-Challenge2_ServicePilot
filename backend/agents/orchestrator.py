@@ -229,6 +229,8 @@ async def process_service_request(
         return {
             "booking": None,
             "message": intent.get("reply", "Assalam o Alaikum! I am here to help you get the best home maintenance support."),
+            "service_type": intent.get("service_type"),
+            "location": intent.get("location"),
             "traces": all_traces,
         }
         
@@ -346,6 +348,8 @@ async def process_service_request(
         "booking": None,
         "message": intent.get("reply", f"Assalam o Alaikum! I've diagnosed that you need a {intent.get('service_type')} in {intent.get('location') or 'Lahore'}."),
         "providers": matched_list,
+        "service_type": intent.get("service_type"),
+        "location": intent.get("location"),
         "traces": all_traces,
     }
 
