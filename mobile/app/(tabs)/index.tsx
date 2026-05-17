@@ -81,6 +81,26 @@ const extractTimePreference = (msg: string): string | null => {
   return null;
 };
 
+interface AgentProfile {
+  name: string;
+  role: string;
+  avatarLetter: string;
+  avatarBg: string;
+  gender: 'female' | 'male';
+}
+
+const AGENTS_POOL: AgentProfile[] = [
+  { name: "Aisha", role: "AI Concierge", avatarLetter: "A", avatarBg: "#ec4899", gender: "female" },
+  { name: "Zara", role: "AI Coordinator", avatarLetter: "Z", avatarBg: "#8b5cf6", gender: "female" },
+  { name: "Sana", role: "AI Helper", avatarLetter: "S", avatarBg: "#f43f5e", gender: "female" },
+  { name: "Mariam", role: "AI Dispatcher", avatarLetter: "M", avatarBg: "#06b6d4", gender: "female" },
+  { name: "Alina", role: "AI Guide", avatarLetter: "A", avatarBg: "#10b981", gender: "female" },
+  { name: "Laiba", role: "AI Specialist", avatarLetter: "L", avatarBg: "#eab308", gender: "female" },
+  { name: "Hamza", role: "AI Supervisor", avatarLetter: "H", avatarBg: "#3b82f6", gender: "male" },
+  { name: "Zain", role: "AI Planner", avatarLetter: "Z", avatarBg: "#6366f1", gender: "male" },
+  { name: "Bilal", role: "AI Support", avatarLetter: "B", avatarBg: "#f97316", gender: "male" }
+];
+
 export default function HomeScreen() {
   const params = useLocalSearchParams();
   const [input, setInput] = useState("");
@@ -107,6 +127,13 @@ export default function HomeScreen() {
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [detectedService, setDetectedService] = useState<string | null>(null);
   const [detectedLocation, setDetectedLocation] = useState<string | null>(null);
+  const [currentAgent, setCurrentAgent] = useState<AgentProfile>(AGENTS_POOL[0]);
+
+  const openChatMode = () => {
+    const randomIndex = Math.floor(Math.random() * AGENTS_POOL.length);
+    setCurrentAgent(AGENTS_POOL[randomIndex]);
+    setIsChatMode(true);
+  };
 
   React.useEffect(() => {
     Animated.loop(
@@ -126,7 +153,7 @@ export default function HomeScreen() {
   React.useEffect(() => {
     if (params.autoBookProvider) {
       const provider = params.autoBookProvider as string;
-      setIsChatMode(true);
+      openChatMode();
       setBookingStep(1);
       setSelectedTechName(provider);
       setSelectedTechRate(1200);
@@ -142,7 +169,7 @@ export default function HomeScreen() {
           { role: "user", text: `I want to auto-book ${provider} now.` },
           {
             role: "agent",
-            text: `🔮 [AI Intent Matcher] Concierge Auto-Booking triggered for **${provider}**.\n\nI have successfully verified their live availability in DHA Lahore.\n\nI found 3 optimal, traffic-optimized time slots:\n\n1️⃣ **10:00 AM** (Recommended slot - optimal route timing)\n2️⃣ **1:30 PM**\n3️⃣ **5:00 PM**\n\nWhich slot would you prefer?`
+            text: `Auto-booking selected for ${provider}.\n\nAvailable slots:\n• 10:00 AM (Recommended)\n• 1:30 PM\n• 5:00 PM\n\nWhich slot do you prefer?`
           }
         ];
       });
@@ -169,7 +196,7 @@ export default function HomeScreen() {
     const userMsg = textToUse || input.trim();
     if (!userMsg || loading) return;
     
-    setIsChatMode(true);
+    openChatMode();
     setInput("");
     setMessages((prev) => [...prev, { role: "user", text: userMsg }]);
     setLoading(true);
@@ -450,7 +477,7 @@ export default function HomeScreen() {
       <TouchableOpacity 
         style={styles.heroSearchBar} 
         activeOpacity={0.9}
-        onPress={() => setIsChatMode(true)}
+        onPress={() => openChatMode()}
       >
         <Ionicons name="search" size={20} color="#94a3b8" />
         <Text style={styles.heroSearchPlaceholder}>Describe your service issue...</Text>
@@ -551,12 +578,12 @@ export default function HomeScreen() {
              <Ionicons name="arrow-back" size={24} color="#0f172a" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
-            <View style={styles.avatarCircleHeader}>
-              <Text style={styles.avatarCircleTextHeader}>A</Text>
+            <View style={[styles.avatarCircleHeader, { backgroundColor: currentAgent.avatarBg }]}>
+              <Text style={styles.avatarCircleTextHeader}>{currentAgent.avatarLetter}</Text>
               <View style={styles.statusPulseDotHeader} />
             </View>
             <View style={{ marginLeft: 6 }}>
-              <Text style={styles.headerTitleSmall}>Aisha (AI Concierge)</Text>
+              <Text style={styles.headerTitleSmall}>{currentAgent.name} ({currentAgent.role})</Text>
               <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
                 <View style={{width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981'}} />
                 <Text style={styles.headerSubSmall}>Active Guidance Mode</Text>
