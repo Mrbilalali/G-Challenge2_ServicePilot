@@ -4,7 +4,7 @@ Chains all agents in sequence and collects the full reasoning trace.
 """
 import uuid
 from datetime import datetime
-from agents.intent_agent import parse_intent
+from agents.intent_agent import parse_intent, generate_checkout_chat
 from agents.matching_agent import match_providers
 from agents.pricing_agent import calculate_price
 from agents.scheduling_agent import schedule_booking
@@ -53,19 +53,19 @@ async def process_service_request(
         fee = rate * 0.1
         total = rate + fee
         
+        chat_msg = await generate_checkout_chat(
+            step=1,
+            user_message=user_message,
+            provider_name=selected_tech_name or "Ahmed Cooling Services",
+            provider_rate=rate,
+            time_slot=slot
+        )
+        
         return {
             "booking": None,
             "action": "LOCK_SLOT",
             "time_slot": slot,
-            "message": (
-                f"Thik hai! Main kal ke liye aapka slot '{slot}' lock kar rahi hoon.\n\n"
-                f"🧾 **Payment Receipt & Escrow Summary**:\n"
-                f"• Provider Base Rate: Rs. {rate}\n"
-                f"• Platform Safe Escrow Fee: Rs. {fee}\n"
-                f"• Total Amount to Hold: Rs. {total}\n\n"
-                f"Guaranteed Protection: Ye raqam platform security hold mein rahegi aur kaam mukammal hone par technician ko release hogi. "
-                f"Kya main booking confirm kar ke amount hold kar doon? Please reply with 'YES' or 'CONFIRM' to authorize."
-            ),
+            "message": chat_msg,
             "traces": all_traces
         }
         
@@ -144,18 +144,22 @@ async def process_service_request(
             }
             db_create_booking(booking)
             
+            chat_msg = await generate_checkout_chat(
+                step=2,
+                user_message=user_message,
+                provider_name=matched_p["name"],
+                provider_rate=rate,
+                time_slot=selected_time_slot or "10:00 AM"
+            )
+            
+            # Inject transaction ID if not present in the dynamic text
+            if "esc_" not in chat_msg:
+                chat_msg += f"\n• Transaction ID: {escrow['id']}"
+                
             return {
                 "booking": booking,
                 "action": "CONFIRM_BOOKING",
-                "message": (
-                    f"🎉 **Booking Confirmed under Secure Escrow Protection!**\n\n"
-                    f"Receipt & Scheduling Details:\n"
-                    f"• Specialist: {matched_p['name']}\n"
-                    f"• Time Slot Locked: tomorrow, {selected_time_slot or '10:00 AM'}\n"
-                    f"• Transaction ID: {escrow['id']}\n"
-                    f"• Secure Hold Payout: Rs. {total} (held securely)\n\n"
-                    f"I have successfully scheduled your booking. The specialist will arrive on time! You can track details in My Bookings."
-                ),
+                "message": chat_msg,
                 "traces": all_traces
             }
         else:

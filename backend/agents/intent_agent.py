@@ -144,3 +144,77 @@ async def parse_intent(user_message: str) -> dict:
         
         trace["reasoning"].append(f"⚡ Keyword fallback activated: {action} / {service}")
         return {"intent": fallback, "trace": trace, "requires_clarification": False}
+
+
+async def generate_checkout_chat(
+    step: int,
+    user_message: str,
+    provider_name: str,
+    provider_rate: float,
+    time_slot: str
+) -> str:
+    """Generates warm, premium, Roman Urdu dynamic checkout chat responses using Gemini."""
+    rate = provider_rate or 1200
+    fee = rate * 0.1
+    total = rate + fee
+    
+    prompt = f"""You are a premium, human-like home services assistant for ServicePilot in Pakistan.
+Your goal is to converse with the user naturally in Roman Urdu/English mix during the booking checkout flow.
+You speak in a warm, polite, and extremely helpful tone. Never use robotic/stiff phrases.
+Absolutely DO NOT use markdown bold asterisks "**" in your output.
+
+Context details:
+- Provider Name: {provider_name}
+- Provider Rate: Rs. {rate}
+- Selected/Requested Time Slot: {time_slot}
+
+Instructions based on the booking step:
+- For Step 1 (Time slot selection):
+  The user said: "{user_message}".
+  Confirm the slot they chose in a friendly way, and show a clear, beautifully formatted receipt/escrow summary using clean bullet points (•) and emojis.
+  Receipt outline:
+    • Base Rate: Rs. {rate}
+    • Platform Escrow Fee (10%): Rs. {fee}
+    • Total Amount: Rs. {total}
+  Explain politely that this amount is locked securely in Escrow for their protection. Ask them warmly to confirm by replying with YES or CONFIRM.
+  
+- For Step 2 (Authorization YES/CONFIRM):
+  The user said: "{user_message}".
+  Confirm the successful booking with absolute excitement and premium politeness!
+  Provide their final transaction details clearly:
+    • Specialist: {provider_name}
+    • Time: tomorrow, {time_slot}
+    • Payout: Rs. {total} (held securely under escrow)
+  Reassure them that their technician is locked and will arrive on time. Keep the tone warm and natural, not robotic.
+"""
+    try:
+        model = genai.GenerativeModel(settings.GEMINI_MODEL)
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.7,
+                max_output_tokens=600,
+            )
+        )
+        return response.text.strip()
+    except Exception:
+        # High quality backup fallback
+        if step == 1:
+            return (
+                f"Thik hai! Main kal ke liye aapka slot '{time_slot}' lock kar rahi hoon.\n\n"
+                f"🧾 **Payment Receipt & Escrow Summary**:\n"
+                f"• Provider Base Rate: Rs. {rate}\n"
+                f"• Platform Safe Escrow Fee: Rs. {fee}\n"
+                f"• Total Amount to Hold: Rs. {total}\n\n"
+                f"Guaranteed Protection: Ye raqam platform security hold mein rahegi aur kaam mukammal hone par technician ko release hogi. "
+                f"Kya main booking confirm kar ke amount hold kar doon? Please reply with 'YES' or 'CONFIRM' to authorize."
+            )
+        else:
+            return (
+                f"🎉 **Booking Confirmed under Secure Escrow Protection!**\n\n"
+                f"Receipt & Scheduling Details:\n"
+                f"• Specialist: {provider_name}\n"
+                f"• Time Slot Locked: tomorrow, {time_slot}\n"
+                f"• Payout Secure Hold: Rs. {total} (held securely)\n\n"
+                f"I have successfully scheduled your booking. The specialist will arrive on time! You can track details in My Bookings."
+            )
