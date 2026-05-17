@@ -160,7 +160,7 @@ export default function HomeScreen() {
       { role: "user", text: `I want to book ${prov.name}.` },
       {
         role: "agent",
-        text: `🔮 **[Orchestrator]** Excellent choice! You've selected **${prov.name}** (verified specialist).\n\nLet's schedule your appointment. I've locked 3 optimal, traffic-optimized time slots:\n\n1️⃣ **10:00 AM** (Recommended - fastest route dispatch)\n2️⃣ **1:30 PM**\n3️⃣ **5:00 PM**\n\nWhich slot do you prefer? (You can also reply with your custom timing, e.g. "Shaam 6 baje")`
+        text: `You selected ${prov.name}.\n\nAvailable slots:\n• 10:00 AM (Recommended)\n• 1:30 PM\n• 5:00 PM\n\nWhich slot do you prefer? (You can also reply with a custom time, e.g., "6 baje")`
       }
     ]);
   };
@@ -245,7 +245,7 @@ export default function HomeScreen() {
             ...prev,
             {
               role: "agent",
-              text: `📅 **Aisha:** Superb! Slot Locked for tomorrow at **${slot}**.\n\n🛡️ **Escrow Advance Payment Summary**:\n- Base Service Rate: Rs. ${selectedTechRate}\n- Escrow Hold Protection Fee (10%): Rs. ${platformFee}\n- Total Secure Hold Balance: Rs. ${total}\n\nWould you like to authorize locking Rs. ${total} in platform Escrow balance to confirm this booking? Reply **"YES"** or **"AUTHORIZE"** to secure.`
+              text: `Slot locked for tomorrow at ${slot}.\n\nEscrow Hold Summary:\n• Base Rate: Rs. ${selectedTechRate}\n• Protection Fee (10%): Rs. ${platformFee}\n• Total Hold: Rs. ${total}\n\nWould you like to authorize locking Rs. ${total} in platform Escrow balance to confirm? Reply "YES" or "AUTHORIZE" to secure.`
             }
           ]);
           setLoading(false);
@@ -272,7 +272,7 @@ export default function HomeScreen() {
               },
               {
                 role: "agent",
-                text: `🎉 **Aisha:** Excellent! Booking secured successfully under Secure Escrow Protection.\n\n${selectedTechName} is dispatched for tomorrow, ${selectedTimeSlot}. You can view status stepper in My Bookings anytime!`
+                text: `Booking secured successfully under Secure Escrow Protection!\n\n• Specialist: ${selectedTechName}\n• Schedule: tomorrow, ${selectedTimeSlot}\n\nYou can track details in My Bookings anytime.`
               }
             ]);
             
@@ -291,7 +291,7 @@ export default function HomeScreen() {
           setDetectedLocation(null);
           setMessages((prev) => [
             ...prev,
-            { role: "agent", text: "Aisha: Booking selection cancelled. How else can I assist your home repair today?" }
+            { role: "agent", text: "Booking selection cancelled. How else can I assist your home repair today?" }
           ]);
           setLoading(false);
           return;
@@ -332,7 +332,7 @@ export default function HomeScreen() {
             ...prev,
             {
               role: "agent",
-              text: `📅 **Aisha:** Shukriya! I have locked your location as **${confirmedLoc}**.\n\nBased on your area, here are our **top verified, certified local partners** with live availability today. Please review the options below and tap **"Book Service"** on whoever fits your budget and timeline best!`,
+              text: `Location set to ${confirmedLoc}.\n\nHere are our top active partners in your area. Tap "Book Service" on your preferred specialist:`,
               data: {
                 providers: matchedProviders
               }
@@ -376,7 +376,7 @@ export default function HomeScreen() {
               ...prev,
               {
                 role: "agent",
-                text: `🔮 **Aisha:** Assalam o Alaikum! I've diagnosed that you need a **${parsedService}** at **${confirmedLoc}**.\n\nHere's some expert guidance:\n💡 *${getGuidanceText(parsedService)}*\n\nBased on your area, here are the top verified partners available right now:`,
+                text: `Assalam o Alaikum! I've matched your request for ${parsedService} in ${confirmedLoc}.\n\n💡 Safety tips:\n• ${getGuidanceText(parsedService)}\n\nHere are the top verified partners available in your area:`,
                 data: {
                   providers: matchedProviders
                 }
@@ -392,7 +392,7 @@ export default function HomeScreen() {
               ...prev,
               {
                 role: "agent",
-                text: `🔮 **Aisha:** Assalam o Alaikum! I've diagnosed that you need a **${parsedService}**.\n\nHere's some expert guidance:\n💡 *${getGuidanceText(parsedService)}*\n\nBefore I recommend our top verified technicians, **could you please tell me your specific location or area** (e.g. DHA Phase 5, Gulberg, Cantt) so I can find the closest active partners for you?`
+                text: `Assalam o Alaikum! I've registered your request for ${parsedService}.\n\n💡 Safety tips:\n• ${getGuidanceText(parsedService)}\n\nPlease reply with your specific location (e.g., DHA Phase 5, Gulberg) so I can find active partners in your area.`
               }
             ]);
             setLoading(false);
@@ -408,7 +408,7 @@ export default function HomeScreen() {
           ...prev,
           {
             role: "agent",
-            text: `🔮 **Aisha:** Assalam o Alaikum! I am here to help you get the best home maintenance support. ${result.message || "Aapko AC repair, wiring faults, plumbing, ya kisi aur maintenance mein guidance ya technician chahiye? Please details batayein!"}`
+            text: `Assalam o Alaikum! I am here to help you get the best home maintenance support. ${result.message || "Aapko AC repair, electrician, ya plumbing mein guidance chahiye? Please details or location batayein!"}`
           }
         ]);
         setLoading(false);
