@@ -105,6 +105,8 @@ export default function HomeScreen() {
   const [selectedTechRate, setSelectedTechRate] = useState(1200);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("10:00 AM");
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+  const [detectedService, setDetectedService] = useState<string | null>(null);
+  const [detectedLocation, setDetectedLocation] = useState<string | null>(null);
 
   React.useEffect(() => {
     Animated.loop(
@@ -175,49 +177,53 @@ export default function HomeScreen() {
     try {
       const lowerMsg = userMsg.toLowerCase();
       
-      // Conversational Booking State Machine
-      if (bookingStep === 0) {
-        if (
-          lowerMsg.includes("book") || 
-          lowerMsg.includes("booking") || 
-          lowerMsg.includes("morning") || 
-          lowerMsg.includes("cheapest") || 
-          lowerMsg.includes("fastest")
-        ) {
-          let techName = "Ahmed Cooling Services";
-          let rate = 1200;
-          let reasonText = "fastest ETA in DHA Lahore and 96% reliability score.";
-          
-          if (lowerMsg.includes("cheapest")) {
-            techName = "Bilal AC Repair & Gas Fillers";
-            rate = 800;
-            reasonText = "lowest base rate (Rs. 800) and highly rated internal network trust.";
-          } else if (lowerMsg.includes("fastest")) {
-            techName = "Lahore Pro Cooling Dispatch";
-            rate = 1400;
-            reasonText = "fastest available route dispatch (~6 mins ETA) and active availability.";
-          }
-          
-          setSelectedTechName(techName);
-          setSelectedTechRate(rate);
-          setBookingStep(1);
-          
-          setTimeout(() => {
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "agent",
-                text: `🔮 [AI Intent Matcher] Detected Booking Action intent.\n[Provider Selected] ${techName}\n[Orchestrator Detail] Recommended because: ${reasonText}\n\nI found 3 optimal, traffic-optimized time slots:\n\n1️⃣ **10:00 AM** (Recommended slot - optimal route timing)\n2️⃣ **1:30 PM**\n3️⃣ **5:00 PM**\n\nWhich slot would you prefer?`
-              }
-            ]);
-            setLoading(false);
-          }, 1000);
-          return;
+      // Helper function to extract phase / area location
+      const detectLocationFromText = (text: string): string | null => {
+        const lower = text.toLowerCase();
+        if (lower.includes("dha") || lower.includes("phase")) {
+          const phaseMatch = lower.match(/phase\s*\d{1,2}/);
+          return phaseMatch ? `DHA ${phaseMatch[0].toUpperCase()}` : "DHA Lahore";
         }
-      }
+        if (lower.includes("gulberg")) return "Gulberg, Lahore";
+        if (lower.includes("johar town")) return "Johar Town, Lahore";
+        if (lower.includes("model town")) return "Model Town, Lahore";
+        if (lower.includes("cantt")) return "Cantt, Lahore";
+        if (lower.includes("bahria")) return "Bahria Town, Lahore";
+        return null;
+      };
 
+      // Helper function to detect service
+      const detectServiceFromText = (text: string): string | null => {
+        const lower = text.toLowerCase();
+        if (lower.includes("ac") || lower.includes("cool") || lower.includes("thanda") || lower.includes("gas") || lower.includes("compressor") || lower.includes("cooling") || lower.includes("heat")) {
+          return "AC Repair";
+        }
+        if (lower.includes("plumb") || lower.includes("leak") || lower.includes("pipe") || lower.includes("water") || lower.includes("sink") || lower.includes("tap") || lower.includes("paani")) {
+          return "Plumbing Service";
+        }
+        if (lower.includes("electr") || lower.includes("wire") || lower.includes("fault") || lower.includes("light") || lower.includes("board") || lower.includes("short") || lower.includes("current")) {
+          return "Electrician Service";
+        }
+        return null;
+      };
+
+      // Helper function to get service safety guidance
+      const getGuidanceText = (service: string): string => {
+        if (service === "AC Repair") {
+          return "AC cooling na karne ki wajohat air filter block hona, compressor overload issue, ya refrigerant gas leak hona ho sakti hain. Safety ke liye, heavy usage temporary band karein taake mazeed damage na ho.";
+        }
+        if (service === "Plumbing Service") {
+          return "Pipeline leakages ya tap dripping se moisture aur water damage barh sakti hai. Safety ke liye, please secondary control valve ko temporary band kar dein taake excess leakage ruk jaye.";
+        }
+        if (service === "Electrician Service") {
+          return "Electrical faults aur short circuits bohut sensitive hote hain aur isse wiring burn ka khatra hota hai. Safety ke liye, please local DB board se main breaker ko off kar dein.";
+        }
+        return "Home services safe operations checks key solutions checked.";
+      };
+
+      // 1. Conversational Booking State Machine (Slots & Escrow)
       if (bookingStep === 1) {
-        // Checking for slot timing or user's custom preference (Urdu/English)
+        // Checking for slot timing or user's custom preference
         let slot = "10:00 AM";
         const customTime = extractTimePreference(userMsg);
         if (customTime) {
@@ -239,7 +245,7 @@ export default function HomeScreen() {
             ...prev,
             {
               role: "agent",
-              text: `📅 Slot Locked: Tomorrow, **${slot}**.\n\n🛡️ **Escrow Advance Payment Summary**:\n- Base Service Rate: Rs. ${selectedTechRate}\n- Escrow Hold Protection Fee (10%): Rs. ${platformFee}\n- Total Secure Hold Balance: Rs. ${total}\n\nWould you like to authorize locking Rs. ${total} in platform Escrow balance to confirm the booking? Reply **"YES"** or **"AUTHORIZE"** to secure.`
+              text: `📅 **Aisha:** Superb! Slot Locked for tomorrow at **${slot}**.\n\n🛡️ **Escrow Advance Payment Summary**:\n- Base Service Rate: Rs. ${selectedTechRate}\n- Escrow Hold Protection Fee (10%): Rs. ${platformFee}\n- Total Secure Hold Balance: Rs. ${total}\n\nWould you like to authorize locking Rs. ${total} in platform Escrow balance to confirm this booking? Reply **"YES"** or **"AUTHORIZE"** to secure.`
             }
           ]);
           setLoading(false);
@@ -252,10 +258,10 @@ export default function HomeScreen() {
           const total = selectedTechRate * 1.1;
           const bookingId = 'booking_' + Math.random().toString(36).substr(2, 9);
           
-          // Secure escrow transaction via API
           await createEscrow(bookingId, total, "wallet");
-          
-          setBookingStep(0); // reset
+          setBookingStep(0); 
+          setDetectedService(null);
+          setDetectedLocation(null);
           
           setTimeout(() => {
             setMessages((prev) => [
@@ -266,7 +272,7 @@ export default function HomeScreen() {
               },
               {
                 role: "agent",
-                text: `🎉 **Booking Secured Under Escrow!**\n\n${selectedTechName} is dispatched for tomorrow, ${selectedTimeSlot}. The advance payment is locked safely. View status stepper in My Bookings anytime.`
+                text: `🎉 **Aisha:** Excellent! Booking secured successfully under Secure Escrow Protection.\n\n${selectedTechName} is dispatched for tomorrow, ${selectedTimeSlot}. You can view status stepper in My Bookings anytime!`
               }
             ]);
             
@@ -281,51 +287,133 @@ export default function HomeScreen() {
           return;
         } else {
           setBookingStep(0);
+          setDetectedService(null);
+          setDetectedLocation(null);
           setMessages((prev) => [
             ...prev,
-            { role: "agent", text: "Booking selection cancelled. How else can I assist your home repair today?" }
+            { role: "agent", text: "Aisha: Booking selection cancelled. How else can I assist your home repair today?" }
           ]);
           setLoading(false);
           return;
         }
       }
 
-      // Standard request matching fallback
-      const result = await submitRequest(userMsg);
-      
-      let serviceType = "Home Service";
-      let matchedProviders = [
-        { id: "PRV-001", name: "Ahmed Cooling Services", rate: 1200, rating: 4.8, area: "DHA Phase 5", specialization: "AC Repair & Gas Refill Expert" },
-        { id: "PRV-002", name: "Bilal AC Repair & Gas Fillers", rate: 800, rating: 4.6, area: "DHA Phase 3", specialization: "Budget AC Servicing" },
-        { id: "PRV-003", name: "Lahore Pro Cooling Dispatch", rate: 1400, rating: 4.9, area: "DHA Phase 6", specialization: "Fast Emergency AC Fixing" }
-      ];
+      // 2. Active intake & conversational diagnostics flow (bookingStep === 0)
+      const parsedService = detectServiceFromText(userMsg);
+      const parsedLocation = detectLocationFromText(userMsg);
 
-      if (lowerMsg.includes("plumb") || lowerMsg.includes("leak") || lowerMsg.includes("pipe") || lowerMsg.includes("water") || lowerMsg.includes("sink") || lowerMsg.includes("tap")) {
-        serviceType = "Plumbing Service";
-        matchedProviders = [
-          { id: "PLB-001", name: "Asif Plumbing Masters", rate: 1000, rating: 4.7, area: "DHA Phase 6", specialization: "High-Pressure Leakage Expert" },
-          { id: "PLB-002", name: "DHA Plumbers Ltd", rate: 750, rating: 4.5, area: "DHA Phase 4", specialization: "General Piping & Drainage" },
-          { id: "PLB-003", name: "Super Fast Plumber Lahore", rate: 1200, rating: 4.8, area: "DHA Phase 5", specialization: "Emergency Blockage Specialist" }
+      // If we already have a service detected but need location:
+      if (detectedService && !detectedLocation && !parsedService) {
+        const confirmedLoc = parsedLocation || userMsg;
+        setDetectedLocation(confirmedLoc);
+        
+        let matchedProviders = [
+          { id: "PRV-001", name: "Ahmed Cooling Services", rate: 1200, rating: 4.8, area: confirmedLoc, specialization: "AC Repair & Gas Refill Expert" },
+          { id: "PRV-002", name: "Bilal AC Repair & Gas Fillers", rate: 800, rating: 4.6, area: confirmedLoc, specialization: "Budget AC Servicing" },
+          { id: "PRV-003", name: "Lahore Pro Cooling Dispatch", rate: 1400, rating: 4.9, area: confirmedLoc, specialization: "Fast Emergency AC Fixing" }
         ];
-      } else if (lowerMsg.includes("electr") || lowerMsg.includes("wire") || lowerMsg.includes("fault") || lowerMsg.includes("light") || lowerMsg.includes("board") || lowerMsg.includes("short")) {
-        serviceType = "Electrician Service";
-        matchedProviders = [
-          { id: "ELC-001", name: "Zahid Electric Hub", rate: 1100, rating: 4.8, area: "DHA Phase 5", specialization: "Short Circuit & Fault Finder" },
-          { id: "ELC-002", name: "Kashif Quick Electricians", rate: 900, rating: 4.6, area: "DHA Phase 1", specialization: "DB Board & Wiring Expert" },
-          { id: "ELC-003", name: "DHA Electric Techs", rate: 1300, rating: 4.9, area: "DHA Phase 6", specialization: "Premium Electrical Installations" }
-        ];
+
+        if (detectedService === "Plumbing Service") {
+          matchedProviders = [
+            { id: "PLB-001", name: "Asif Plumbing Masters", rate: 1000, rating: 4.7, area: confirmedLoc, specialization: "High-Pressure Leakage Expert" },
+            { id: "PLB-002", name: "DHA Plumbers Ltd", rate: 750, rating: 4.5, area: confirmedLoc, specialization: "General Piping & Drainage" },
+            { id: "PLB-003", name: "Super Fast Plumber Lahore", rate: 1200, rating: 4.8, area: confirmedLoc, specialization: "Emergency Blockage Specialist" }
+          ];
+        } else if (detectedService === "Electrician Service") {
+          matchedProviders = [
+            { id: "ELC-001", name: "Zahid Electric Hub", rate: 1100, rating: 4.8, area: confirmedLoc, specialization: "Short Circuit & Fault Finder" },
+            { id: "ELC-002", name: "Kashif Quick Electricians", rate: 900, rating: 4.6, area: confirmedLoc, specialization: "DB Board & Wiring Expert" },
+            { id: "ELC-003", name: "DHA Electric Techs", rate: 1300, rating: 4.9, area: confirmedLoc, specialization: "Premium Electrical Installations" }
+          ];
+        }
+
+        setTimeout(() => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "agent",
+              text: `📅 **Aisha:** Shukriya! I have locked your location as **${confirmedLoc}**.\n\nBased on your area, here are our **top verified, certified local partners** with live availability today. Please review the options below and tap **"Book Service"** on whoever fits your budget and timeline best!`,
+              data: {
+                providers: matchedProviders
+              }
+            }
+          ]);
+          setLoading(false);
+        }, 1000);
+        return;
       }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "agent",
-          text: `🔮 **[AI Intent Agent]** Assalam o Alaikum! I have diagnosed your service request for **${serviceType}** in **DHA Lahore**.\n\nI have matched your request with our **top verified, certified local partners** with live availability today. Please review the options below and tap **"Book Service"** on whoever fits your budget and timeline best!`,
-          data: {
-            providers: matchedProviders
+      // If a service type is detected:
+      if (parsedService) {
+        setDetectedService(parsedService);
+        const confirmedLoc = parsedLocation || detectedLocation;
+        
+        if (confirmedLoc) {
+          setDetectedLocation(confirmedLoc);
+          
+          let matchedProviders = [
+            { id: "PRV-001", name: "Ahmed Cooling Services", rate: 1200, rating: 4.8, area: confirmedLoc, specialization: "AC Repair & Gas Refill Expert" },
+            { id: "PRV-002", name: "Bilal AC Repair & Gas Fillers", rate: 800, rating: 4.6, area: confirmedLoc, specialization: "Budget AC Servicing" },
+            { id: "PRV-003", name: "Lahore Pro Cooling Dispatch", rate: 1400, rating: 4.9, area: confirmedLoc, specialization: "Fast Emergency AC Fixing" }
+          ];
+
+          if (parsedService === "Plumbing Service") {
+            matchedProviders = [
+              { id: "PLB-001", name: "Asif Plumbing Masters", rate: 1000, rating: 4.7, area: confirmedLoc, specialization: "High-Pressure Leakage Expert" },
+              { id: "PLB-002", name: "DHA Plumbers Ltd", rate: 750, rating: 4.5, area: confirmedLoc, specialization: "General Piping & Drainage" },
+              { id: "PLB-003", name: "Super Fast Plumber Lahore", rate: 1200, rating: 4.8, area: confirmedLoc, specialization: "Emergency Blockage Specialist" }
+            ];
+          } else if (parsedService === "Electrician Service") {
+            matchedProviders = [
+              { id: "ELC-001", name: "Zahid Electric Hub", rate: 1100, rating: 4.8, area: confirmedLoc, specialization: "Short Circuit & Fault Finder" },
+              { id: "ELC-002", name: "Kashif Quick Electricians", rate: 900, rating: 4.6, area: confirmedLoc, specialization: "DB Board & Wiring Expert" },
+              { id: "ELC-003", name: "DHA Electric Techs", rate: 1300, rating: 4.9, area: confirmedLoc, specialization: "Premium Electrical Installations" }
+            ];
           }
+
+          setTimeout(() => {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "agent",
+                text: `🔮 **Aisha:** Assalam o Alaikum! I've diagnosed that you need a **${parsedService}** at **${confirmedLoc}**.\n\nHere's some expert guidance:\n💡 *${getGuidanceText(parsedService)}*\n\nBased on your area, here are the top verified partners available right now:`,
+                data: {
+                  providers: matchedProviders
+                }
+              }
+            ]);
+            setLoading(false);
+          }, 1000);
+          return;
+        } else {
+          // Location not specified yet! Ask the user for their location conversationaly!
+          setTimeout(() => {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "agent",
+                text: `🔮 **Aisha:** Assalam o Alaikum! I've diagnosed that you need a **${parsedService}**.\n\nHere's some expert guidance:\n💡 *${getGuidanceText(parsedService)}*\n\nBefore I recommend our top verified technicians, **could you please tell me your specific location or area** (e.g. DHA Phase 5, Gulberg, Cantt) so I can find the closest active partners for you?`
+              }
+            ]);
+            setLoading(false);
+          }, 1000);
+          return;
         }
-      ]);
+      }
+
+      // If they ask a general conversational prompt but no service matches, call standard submitRequest:
+      const result = await submitRequest(userMsg);
+      setTimeout(() => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "agent",
+            text: `🔮 **Aisha:** Assalam o Alaikum! I am here to help you get the best home maintenance support. ${result.message || "Aapko AC repair, wiring faults, plumbing, ya kisi aur maintenance mein guidance ya technician chahiye? Please details batayein!"}`
+          }
+        ]);
+        setLoading(false);
+      }, 1000);
+
     } catch (e: any) {
       setMessages((prev) => [
         ...prev,
@@ -334,8 +422,8 @@ export default function HomeScreen() {
           text: `[ERROR] Connection failed.\n${e.message}`,
         },
       ]);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const renderHeroSection = () => (
@@ -463,14 +551,15 @@ export default function HomeScreen() {
              <Ionicons name="arrow-back" size={24} color="#0f172a" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
-            <View style={styles.headerIconBg}>
-              <Ionicons name="flash" size={18} color="#4f46e5" />
+            <View style={styles.avatarCircleHeader}>
+              <Text style={styles.avatarCircleTextHeader}>A</Text>
+              <View style={styles.statusPulseDotHeader} />
             </View>
-            <View>
-              <Text style={styles.headerTitleSmall}>AI Copilot</Text>
+            <View style={{ marginLeft: 6 }}>
+              <Text style={styles.headerTitleSmall}>Aisha (AI Concierge)</Text>
               <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
                 <View style={{width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981'}} />
-                <Text style={styles.headerSubSmall}>Orchestration active</Text>
+                <Text style={styles.headerSubSmall}>Active Guidance Mode</Text>
               </View>
             </View>
           </View>
@@ -750,5 +839,10 @@ const styles = StyleSheet.create({
   inlinePriceValue: { fontSize: 13, fontWeight: '900', color: '#0f172a' },
   inlineBookBtn: { height: 36, borderRadius: 10, overflow: 'hidden' },
   inlineBookBtnGrad: { width: '100%', height: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  inlineBookBtnText: { color: '#ffffff', fontSize: 12, fontWeight: '800' }
+  inlineBookBtnText: { color: '#ffffff', fontSize: 12, fontWeight: '800' },
+
+  // Aisha Header Avatar Styles
+  avatarCircleHeader: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  avatarCircleTextHeader: { fontSize: 14, fontWeight: '900', color: '#fff' },
+  statusPulseDotHeader: { position: 'absolute', bottom: 0, right: 0, width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981', borderWidth: 1, borderColor: '#fff' }
 });
