@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 export const API_BASE = Platform.select({
   web: "http://localhost:8000/api",
   android: "http://10.0.2.2:8000/api",
-  default: "http://192.168.0.107:8000/api"
+  default: "http://172.17.100.187:8000/api"
 });
 
 export async function submitRequest(message: string) {
