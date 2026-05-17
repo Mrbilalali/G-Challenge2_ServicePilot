@@ -326,6 +326,36 @@ export default function HomeScreen() {
       }
 
       // 2. Active intake & conversational diagnostics flow (bookingStep === 0)
+      const isGreeting = (text: string): boolean => {
+        const lower = text.toLowerCase().trim().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
+        return (
+          lower === "hi" ||
+          lower === "hello" ||
+          lower === "hey" ||
+          lower === "aoa" ||
+          lower === "assalam o alaikum" ||
+          lower === "assalam-o-alaikum" ||
+          lower === "salam" ||
+          lower === "greetings" ||
+          lower === "hlo" ||
+          lower === "yo"
+        );
+      };
+
+      if (isGreeting(userMsg)) {
+        setTimeout(() => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "agent",
+              text: `Assalam o Alaikum! I am here to help you. Aapko aaj kis service (AC repair, plumbing, ya electrician) mein madad chahiye? Please mujhe details batayein!`
+            }
+          ]);
+          setLoading(false);
+        }, 1000);
+        return;
+      }
+
       const parsedService = detectServiceFromText(userMsg);
       const parsedLocation = detectLocationFromText(userMsg);
 
