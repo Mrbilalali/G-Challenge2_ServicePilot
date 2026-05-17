@@ -3,10 +3,6 @@ node_modules/
 .expo/
 *.log
 
-# Backend Secrets & Runtime Cache
-backend/.env
-__pycache__/
-*.pyc
 
 # Local systems
 .DS_Store
