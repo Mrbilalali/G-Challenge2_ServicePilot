@@ -226,6 +226,11 @@ export default function HomeScreen() {
     const userMsg = textToUse || input.trim();
     if (!userMsg || loading) return;
     
+    // Map chat history (excluding system messages) BEFORE adding the new user message
+    const chatHistory = messages
+      .filter(m => m.role === "user" || m.role === "agent")
+      .map(m => ({ role: m.role, text: m.text }));
+      
     openChatMode();
     setInput("");
     setMessages((prev) => [...prev, { role: "user", text: userMsg }]);
@@ -234,7 +239,7 @@ export default function HomeScreen() {
     try {
       // 1. Conversational Booking State Machine (Slots & Escrow)
       if (bookingStep === 1) {
-        const result = await submitRequest(userMsg, bookingStep, selectedTechName, selectedTechRate, selectedTimeSlot);
+        const result = await submitRequest(userMsg, bookingStep, selectedTechName, selectedTechRate, selectedTimeSlot, chatHistory);
         setTimeout(() => {
           if (result.action === "LOCK_SLOT" && result.time_slot) {
             setSelectedTimeSlot(result.time_slot);
@@ -253,7 +258,7 @@ export default function HomeScreen() {
       }
 
       if (bookingStep === 2) {
-        const result = await submitRequest(userMsg, bookingStep, selectedTechName, selectedTechRate, selectedTimeSlot);
+        const result = await submitRequest(userMsg, bookingStep, selectedTechName, selectedTechRate, selectedTimeSlot, chatHistory);
         setTimeout(() => {
           if (result.action === "CONFIRM_BOOKING") {
             setBookingStep(0);
@@ -315,7 +320,7 @@ export default function HomeScreen() {
       }
 
       // Call standard Agentic AI submitRequest:
-      const result = await submitRequest(apiMsg);
+      const result = await submitRequest(apiMsg, bookingStep, selectedTechName, selectedTechRate, selectedTimeSlot, chatHistory);
       setTimeout(() => {
         if (result.service_type) {
           setDetectedService(result.service_type);

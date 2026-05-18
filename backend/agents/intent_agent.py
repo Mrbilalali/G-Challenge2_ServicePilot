@@ -69,7 +69,7 @@ Examples:
 - "Kal morning" ->
   {"reply": "Perfect! I found our top verified AC specialists available tomorrow morning near DHA Phase 6. Let me fetch their profiles for you...", "action": "RECOMMEND", "service_type": "AC Repair", "location": "DHA Phase 6", "booking_id": null, "provider_name": null}
 """
-async def parse_intent(user_message: str) -> dict:
+async def parse_intent(user_message: str, chat_history: list = None) -> dict:
     """Parse a user's natural language request into structured intent and agentic actions."""
     
     trace = {
@@ -115,10 +115,18 @@ async def parse_intent(user_message: str) -> dict:
         }
         return {"intent": intent, "trace": trace, "requires_clarification": False}
         
+    history_context = ""
+    if chat_history:
+        history_context = "\nConversation history so far:\n"
+        for msg in chat_history[-6:]:
+            role_name = "User" if msg.get("role") == "user" else "Sana"
+            history_context += f"{role_name}: {msg.get('text')}\n"
+
     try:
         model = genai.GenerativeModel(settings.GEMINI_MODEL)
+        prompt = f"{SYSTEM_PROMPT}\n{history_context}\nUser message: \"{user_message}\""
         response = model.generate_content(
-            f"{SYSTEM_PROMPT}\n\nUser message: \"{user_message}\"",
+            prompt,
             generation_config=genai.types.GenerationConfig(
                 temperature=0.2,
                 max_output_tokens=800,

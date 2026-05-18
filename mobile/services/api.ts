@@ -12,7 +12,8 @@ export async function submitRequest(
   bookingStep?: number,
   selectedTechName?: string,
   selectedTechRate?: number,
-  selectedTimeSlot?: string
+  selectedTimeSlot?: string,
+  chatHistory?: Array<{ role: string, text: string }>
 ) {
   const res = await fetch(`${API_BASE}/request`, {
     method: "POST",
@@ -22,7 +23,8 @@ export async function submitRequest(
       booking_step: bookingStep,
       selected_tech_name: selectedTechName,
       selected_tech_rate: selectedTechRate,
-      selected_time_slot: selectedTimeSlot
+      selected_time_slot: selectedTimeSlot,
+      chat_history: chatHistory
     }),
   });
   return res.json();

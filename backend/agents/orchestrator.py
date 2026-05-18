@@ -21,7 +21,8 @@ async def process_service_request(
     booking_step: int = 0,
     selected_tech_name: str = None,
     selected_tech_rate: float = None,
-    selected_time_slot: str = None
+    selected_time_slot: str = None,
+    chat_history: list = None
 ) -> dict:
     """Full Agentic Core pipeline: parses message and executes database actions dynamically."""
     
@@ -171,7 +172,7 @@ async def process_service_request(
             }
 
     # 1. Intent & Agentic Actions Parse
-    intent_result = await parse_intent(user_message)
+    intent_result = await parse_intent(user_message, chat_history=chat_history)
     intent = intent_result["intent"]
     all_traces.append(intent_result["trace"])
     

@@ -21,6 +21,7 @@ class ServiceRequest(BaseModel):
     selected_tech_name: Optional[str] = None
     selected_tech_rate: Optional[float] = None
     selected_time_slot: Optional[str] = None
+    chat_history: Optional[List[dict]] = None
 
 class FeedbackRequest(BaseModel):
     rating: int  # 1-5
@@ -39,7 +40,8 @@ async def create_request(req: ServiceRequest):
         booking_step=req.booking_step,
         selected_tech_name=req.selected_tech_name,
         selected_tech_rate=req.selected_tech_rate,
-        selected_time_slot=req.selected_time_slot
+        selected_time_slot=req.selected_time_slot,
+        chat_history=req.chat_history
     )
     return result
 
