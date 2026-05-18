@@ -293,11 +293,25 @@ export default function HomeScreen() {
         return;
       }
 
+      // Direct frontend keyword matching for rock-solid stateless bridge
+      const lowerMsg = userMsg.toLowerCase();
+      let activeService = detectedService;
+      if (lowerMsg.includes("ac") || lowerMsg.includes("cooling") || lowerMsg.includes("compressor") || lowerMsg.includes("reparing") || lowerMsg.includes("repair")) {
+        activeService = "AC Repair";
+        setDetectedService("AC Repair");
+      } else if (lowerMsg.includes("plumb") || lowerMsg.includes("pipe") || lowerMsg.includes("leak") || lowerMsg.includes("tap")) {
+        activeService = "Plumbing";
+        setDetectedService("Plumbing");
+      } else if (lowerMsg.includes("electr") || lowerMsg.includes("bijli") || lowerMsg.includes("wiring") || lowerMsg.includes("light")) {
+        activeService = "Electrician";
+        setDetectedService("Electrician");
+      }
+
       // 2. Active intake & conversational diagnostics flow (bookingStep === 0)
       let apiMsg = userMsg;
-      if (detectedService && !detectedLocation) {
+      if (activeService && !detectedLocation) {
         // Transparent session bridge: append service context when user replies with location
-        apiMsg = `${detectedService} in ${userMsg}`;
+        apiMsg = `${activeService} in ${userMsg}`;
       }
 
       // Call standard Agentic AI submitRequest:

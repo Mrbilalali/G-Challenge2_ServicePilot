@@ -175,6 +175,27 @@ async def process_service_request(
     intent = intent_result["intent"]
     all_traces.append(intent_result["trace"])
     
+    # Context Protection Shield: preserve service and location
+    msg_lower = user_message.lower()
+    if not intent.get("service_type"):
+        if any(w in msg_lower for w in ["ac", "cooling", "thanda", "compressor"]):
+            intent["service_type"] = "AC Repair"
+        elif any(w in msg_lower for w in ["electric", "bijli", "wiring", "short", "light"]):
+            intent["service_type"] = "Electrician"
+        elif any(w in msg_lower for w in ["plumb", "pani", "pipe", "leak", "tap"]):
+            intent["service_type"] = "Plumbing"
+            
+    if not intent.get("location"):
+        for loc in ["dha", "bahria", "gulberg", "johar", "model town", "national town", "national"]:
+            if loc in msg_lower:
+                intent["location"] = loc.upper() if len(loc) <= 4 else loc.title()
+                break
+
+    # Upgrade action if both service and location are present
+    if intent.get("service_type") and intent.get("location") and intent.get("action") == "NONE":
+        intent["action"] = "RECOMMEND"
+        intent["reply"] = f"Perfect! Main aap ke liye best active {intent['service_type']} specialists dhoond rahi hoon {intent['location']} mein..."
+        
     action = intent.get("action", "NONE")
     
     # ML/DL Agentic Multi-Task Actions execution
