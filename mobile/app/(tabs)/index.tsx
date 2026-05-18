@@ -129,27 +129,33 @@ export default function HomeScreen() {
   const [detectedLocation, setDetectedLocation] = useState<string | null>(null);
   const [currentAgent, setCurrentAgent] = useState<AgentProfile>(AGENTS_POOL[0]); // Default to Sana
 
-  const ORCHESTRATION_STATES = [
-    "Understanding your request...",
-    "Searching trusted providers...",
-    "Comparing technician reliability...",
-    "Optimizing available slots...",
-    "Preparing secure booking...",
-    "Confirming technician availability..."
-  ];
-
-  const [orchestrationIndex, setOrchestrationIndex] = useState(0);
+  const [orchestrationLines, setOrchestrationLines] = useState<string[]>([]);
 
   React.useEffect(() => {
-    let interval: any;
+    let timeouts: any[] = [];
     if (loading) {
-      setOrchestrationIndex(0);
-      interval = setInterval(() => {
-        setOrchestrationIndex((prev) => (prev + 1) % ORCHESTRATION_STATES.length);
-      }, 1500);
+      setOrchestrationLines(["🧠 Sana AI: Understanding request..."]);
+      
+      const feed = [
+        "📍 Location Agent: Detecting service location...",
+        "🔎 Matching Agent: Searching verified specialists...",
+        "⭐ Ranking Agent: Comparing reliability & ratings...",
+        "📅 Scheduling Agent: Checking active availability...",
+        "💰 Pricing Agent: Generating pricing breakdown...",
+        "✅ Booking Agent: Ready for booking confirmation..."
+      ];
+      
+      feed.forEach((line, index) => {
+        const t = setTimeout(() => {
+          setOrchestrationLines(prev => [...prev, line]);
+        }, (index + 1) * 800);
+        timeouts.push(t);
+      });
+    } else {
+      setOrchestrationLines([]);
     }
     return () => {
-      if (interval) clearInterval(interval);
+      timeouts.forEach(t => clearTimeout(t));
     };
   }, [loading]);
 
@@ -560,18 +566,26 @@ export default function HomeScreen() {
               <View style={styles.agentAvatar}>
                 <Ionicons name="sparkles" size={14} color="#fff" />
               </View>
-              <View style={[styles.bubble, styles.agentBubble, { paddingVertical: 14, borderLeftWidth: 3, borderLeftColor: '#f43f5e', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 3 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <View style={[styles.bubble, styles.agentBubble, { paddingVertical: 14, borderLeftWidth: 3, borderLeftColor: '#f43f5e', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 3, minWidth: 260 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, borderBottomWidth: 0.5, borderBottomColor: '#e2e8f0', paddingBottom: 6 }}>
                   <View style={styles.typingIndicator}>
                     <View style={styles.typingDot} />
                     <View style={[styles.typingDot, { opacity: 0.7 }]} />
                     <View style={[styles.typingDot, { opacity: 0.4 }]} />
                   </View>
-                  <Text style={{ fontSize: 9, color: '#f43f5e', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.8 }}>Sana is thinking...</Text>
+                  <Text style={{ fontSize: 9, color: '#f43f5e', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.8 }}>Sana AI Orchestration Feed</Text>
                 </View>
-                <Text style={[styles.loadingText, { color: '#0f172a', fontWeight: '600', fontSize: 13, marginTop: 2 }]}>
-                  {ORCHESTRATION_STATES[orchestrationIndex]}
-                </Text>
+                
+                {orchestrationLines.map((line, idx) => {
+                  const isLast = idx === orchestrationLines.length - 1;
+                  return (
+                    <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 3 }}>
+                      <Text style={{ fontSize: 12, color: isLast ? '#0f172a' : '#64748b', fontWeight: isLast ? '700' : '400', opacity: isLast ? 1 : 0.75 }}>
+                        {line}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
             </View>
           )}
