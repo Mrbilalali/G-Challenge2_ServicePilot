@@ -193,7 +193,10 @@ async def parse_intent(user_message: str) -> dict:
 
         location_str = f" in {location}" if location else ""
         if service:
-            reply = f"Perfect! Main aap ke liye best active {service} specialists dhoond rahi hoon{location_str}..."
+            if location:
+                reply = f"Perfect! Main aap ke liye best active {service} specialists dhoond rahi hoon{location_str}..."
+            else:
+                reply = f"Sure 😊 Aap Lahore mein kis area/location (e.g. DHA, Gulberg, Johar Town) par {service} service chahte hain?"
         else:
             reply = "Sana here 😊 Aap kis service (AC Repair, Plumbing, ya Electrician) ke baare mein pooch rahe hain? Please details batayein taake main active specialists search kar sakoon!"
             
