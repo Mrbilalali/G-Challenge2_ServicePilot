@@ -51,7 +51,9 @@ def _haversine(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
 
 def _get_user_coords(location: str) -> tuple[float, float]:
     """Resolve a location string to approximate coordinates."""
-    loc_lower = location.lower().strip()
+    if not location:
+        return AREA_COORDS["lahore"]
+    loc_lower = str(location).lower().strip()
     for key, coords in AREA_COORDS.items():
         if key in loc_lower or loc_lower in key:
             return coords
@@ -86,7 +88,7 @@ async def match_providers(intent: dict, exclude_ids: list[str] | None = None) ->
         return {"providers": [], "trace": trace}
     
     # Step 2: Calculate user coordinates
-    user_location = intent.get("location", "Lahore")
+    user_location = intent.get("location") or "Lahore"
     user_coords = _get_user_coords(user_location)
     trace["reasoning"].append(f"User location resolved: '{user_location}' → ({user_coords[0]:.4f}, {user_coords[1]:.4f})")
     
