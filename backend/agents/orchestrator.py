@@ -176,27 +176,104 @@ async def process_service_request(
     intent = intent_result["intent"]
     all_traces.append(intent_result["trace"])
     
-    # Context Protection Shield: preserve service and location
-    msg_lower = user_message.lower()
-    if not intent.get("service_type"):
-        if any(w in msg_lower for w in ["ac", "cooling", "thanda", "compressor"]):
-            intent["service_type"] = "AC Repair"
-        elif any(w in msg_lower for w in ["electric", "bijli", "wiring", "short", "light"]):
-            intent["service_type"] = "Electrician"
-        elif any(w in msg_lower for w in ["plumb", "pani", "pipe", "leak", "tap"]):
-            intent["service_type"] = "Plumbing"
+    # Context Protection Shield: preserve service, location, timing, and details
+    service = intent.get("service_type")
+    location = intent.get("location")
+    timing = intent.get("timing")
+    details = intent.get("details")
+
+    # Extract details from chat history to avoid stateless memory loss
+    if chat_history:
+        for msg in chat_history:
+            text = msg.get("text", "").lower()
+            if not service:
+                if any(w in text for w in ["ac", "cooling", "thanda", "compressor"]):
+                    service = "AC Repair"
+                elif any(w in text for w in ["electric", "bijli", "wiring", "short", "light"]):
+                    service = "Electrician"
+                elif any(w in text for w in ["plumb", "pani", "pipe", "leak", "tap"]):
+                    service = "Plumbing"
             
-    if not intent.get("location"):
+            if not location:
+                for loc in ["dha", "bahria", "gulberg", "johar", "model town", "national town", "national"]:
+                    if loc in text:
+                        location = loc.upper() if len(loc) <= 4 else loc.title()
+                        break
+                        
+            if not timing:
+                for t_word in ["kal", "tomorrow", "evening", "morning", "subah", "sham", "urgent", "jaldi", "shift", "baje"]:
+                    if t_word in text:
+                        timing = "Tomorrow Shift" if ("tomorrow" in text or "kal" in text) else "Standard Shift"
+                        break
+
+            if not details:
+                if any(w in text for w in ["jo light", "leakage", "leak", "pipe", "reparing", "installation", "fitting", "thek kr"]):
+                    details = "Resolved Details"
+
+    # Fallback to current user message
+    msg_lower = user_message.lower()
+    if not service:
+        if any(w in msg_lower for w in ["ac", "cooling", "thanda", "compressor"]):
+            service = "AC Repair"
+        elif any(w in msg_lower for w in ["electric", "bijli", "wiring", "short", "light"]):
+            service = "Electrician"
+        elif any(w in msg_lower for w in ["plumb", "pani", "pipe", "leak", "tap"]):
+            service = "Plumbing"
+            
+    if not location:
         for loc in ["dha", "bahria", "gulberg", "johar", "model town", "national town", "national"]:
             if loc in msg_lower:
-                intent["location"] = loc.upper() if len(loc) <= 4 else loc.title()
+                location = loc.upper() if len(loc) <= 4 else loc.title()
+                break
+                
+    if not timing:
+        for t_word in ["kal", "tomorrow", "evening", "morning", "subah", "sham", "urgent", "jaldi", "shift", "baje"]:
+            if t_word in msg_lower:
+                timing = "Tomorrow Shift" if ("tomorrow" in msg_lower or "kal" in msg_lower) else "Standard Shift"
                 break
 
-    # Upgrade action if both service and location are present
-    if intent.get("service_type") and intent.get("location") and intent.get("action") == "NONE":
+    if not details:
+        if any(w in msg_lower for w in ["jo light", "leakage", "leak", "pipe", "reparing", "installation", "fitting", "thek kr", "sirf"]):
+            details = "Resolved Details"
+
+    # Update intent payload
+    intent["service_type"] = service
+    intent["location"] = location
+    intent["timing"] = timing
+    intent["details"] = details
+
+    # Determine missing critical requirements
+    critical_missing = []
+    if not service:
+        critical_missing.append("service")
+    if not location:
+        critical_missing.append("location")
+    if not timing:
+        critical_missing.append("timing")
+    if not details:
+        critical_missing.append("details")
+
+    # If any required requirement is missing, downgrade action and generate perfect conversational reply
+    if critical_missing:
+        intent["action"] = "NONE"
+        if "service" in critical_missing:
+            intent["reply"] = "Sana here 😊 Aap kis service (AC Repair, Plumbing, ya Electrician) ke baare mein pooch rahe hain? Please details batayein!"
+        elif "location" in critical_missing:
+            intent["reply"] = f"Sure 😊\nMain aapki help karti hoon.\n\nAap kis area mein service chahte hain?"
+        elif "timing" in critical_missing:
+            intent["reply"] = f"Great 👍\nKya aapko service urgently chahiye ya aap custom timing select karna chahenge?"
+        elif "details" in critical_missing:
+            if service == "Electrician":
+                intent["reply"] = f"Perfect.\nKya aap sirf light installation chahte hain ya wiring/checking bhi required hai?"
+            elif service == "AC Repair":
+                intent["reply"] = f"Perfect.\nKya AC mein gas leak ka issue hai ya checking and filter service required hai?"
+            else:
+                intent["reply"] = f"Perfect.\nKya pipe leakage ka issue hai ya new fitting and repair required hai?"
+    else:
+        # All 4 requirements resolved: upgrade to RECOMMEND
         intent["action"] = "RECOMMEND"
-        intent["reply"] = f"Perfect! Main aap ke liye best active {intent['service_type']} specialists dhoond rahi hoon {intent['location']} mein..."
-        
+        intent["reply"] = f"Understood 😊 Main verified {service} specialists search kar rahi hoon near {location}..."
+
     action = intent.get("action", "NONE")
     
     # ML/DL Agentic Multi-Task Actions execution
@@ -393,9 +470,13 @@ async def process_service_request(
             "specialization": p.get("specializations", ["Verified Specialist"])[0],
         })
         
+    # After showing providers, guide them naturally to complete the booking
+    best_provider_name = matched_list[0]["name"] if matched_list else "Ahmed Cooling Services"
+    assistance_msg = f"I found {len(matched_list)} verified {intent.get('service_type')} specialists near {intent.get('location')}.\n\n{best_provider_name} has the highest reliability score and fastest ETA near your location.\n\nWould you like me to proceed with booking or help you reserve this technician?"
+    
     return {
         "booking": None,
-        "message": intent.get("reply", f"Assalam o Alaikum! I've diagnosed that you need a {intent.get('service_type')} in {intent.get('location') or 'Lahore'}."),
+        "message": assistance_msg,
         "providers": matched_list,
         "service_type": intent.get("service_type"),
         "location": intent.get("location"),

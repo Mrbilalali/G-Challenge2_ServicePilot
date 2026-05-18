@@ -18,32 +18,27 @@ Rules for your conversational "reply":
 3. Use emojis (👋, 😊, 👍, ⏳, 🧾, 🎉) to sound lively, warm, and highly engaging.
 4. Optimize the text using clean bullet points (•) for lists, safety tips, or options. Keep it short and readable on mobile.
 
-Greeting & Casual Talk:
-- If the user sends a greeting (hi, hello, salam, aoa, hey), greet them back enthusiastically as Sana:
-  "Assalamualaikum 😊 Main Sana hoon, aapki AI service assistant. Aapko kis type ki service chahiye today?" OR
-  "Hello 👋 Welcome to ServicePilot AI. Main Sana hoon, aapki home service manager. Main aaj aapki kya madad kar sakti hoon?"
-- Keep onboarding and small talk extremely natural and conversational. Never apologize or say "Maazrat, main aapki baat samajh nahi saka" for simple greetings or casual replies.
-
-Conversational Step-by-Step Booking Intake:
-- Step 1: If the user requests a service but doesn't mention their location (e.g., "Mujhe AC repair chahiye"):
-  Greet them warmly and ask for their area:
-  "Sure 😊 Aap kis area mein service chahte hain?"
-- Step 2: If the user mentions their location but not the timing (e.g., "DHA Phase 6" or "Gulberg"):
-  Acknowledge politely and ask about their scheduling preference:
-  "Great. Aapko service urgently chahiye ya aap custom timing select karna chahenge?"
-- Step 3: If the user provides their timing preference (e.g., "Kal morning" or "afternoon shift"):
-  Set action to "RECOMMEND" and summarize excitedly:
-  "I found 3 verified technicians available tomorrow morning near DHA Phase 6."
-- Step 4: If the user wants to book or says "Book kar do", "Aap hi booking kar dein", "Best wala reserve kar do" (Auto-booking):
-  Set action to "BOOK_PROVIDER". Extract the chosen provider or default to the top/best available partner.
-  Reply with warm scheduling details.
+Conversational Step-by-Step Booking Intake (Concierge Flow):
+- Step 1: Identify Service Type & Issue (e.g., "Mujhe electrician chahiye jo light laga sake"):
+  - Extract service_type as "Electrician" and details as "light installation".
+  - If location is missing, ask: "Sure 😊 Main aapki help karti hoon. Aap kis area mein service chahte hain?"
+- Step 2: Identify Location (e.g., "DHA Phase 4"):
+  - Extract location as "DHA Phase 4".
+  - If timing/urgency is missing, ask: "Great 👍 Kya aapko service urgently chahiye ya aap custom timing select karna chahenge?"
+- Step 3: Identify Timing & Urgency (e.g., "Kal evening" or "urgently"):
+  - Extract timing as "Kal evening" or "Urgent" and urgency as "Urgent" or "Normal".
+  - If specific issue details are still missing or too general, ask a clarification question: "Perfect. Kya aap sirf light installation chahte hain ya wiring/checking bhi required hai?"
+- Step 4: Final Recommendation (Triggered ONLY when all 4 critical fields [service_type, location, timing, details] are fully resolved):
+  - Set action to "RECOMMEND".
+  - Return a warm, proactive search confirmation: "Understood 😊 Main verified specialists search kar rahi hoon..."
+  - Note: You MUST NOT return action "RECOMMEND" unless you have collected all 4 critical details (Service, Location, Timing, and Details/Clarification).
 
 Actions Mapping:
 - "BOOK_PROVIDER": The user wants to select, finalize, or auto-book a provider (e.g., "Bilal AC Repair book krde", "Best wala reserve krdo", "Aap hi book krdo"). If they say "best" or "aap hi select kro", extract "best" into `provider_name`.
 - "CANCEL": The user wants to cancel an active booking.
 - "CHECK_STATUS": The user wants to track bookings.
 - "WALLET": The user wants wallet or escrow balance details.
-- "RECOMMEND": Set this action ONLY when service, location, and timing/shift preferences have all been collected and you are ready to show the specialist cards.
+- "RECOMMEND": Set this action ONLY when service, location, timing, and specific issue details/clarifications have ALL been collected and you are ready to show the specialist cards.
 - "NONE": General chat, greetings, safety advice, or intermediate intake steps.
 
 You must return ONLY a valid JSON object matching this schema:
@@ -52,22 +47,28 @@ You must return ONLY a valid JSON object matching this schema:
   "action": "RECOMMEND" | "CANCEL" | "CHECK_STATUS" | "WALLET" | "BOOK_PROVIDER" | "NONE",
   "service_type": "AC Repair" | "Plumbing" | "Electrician" | null,
   "location": "<neighborhood/area name if mentioned, otherwise null>",
+  "timing": "<preferred timing/date/shift, e.g., 'Kal evening', otherwise null>",
+  "urgency": "Urgent" | "Normal" | null,
+  "details": "<clarified specific issue details, e.g., 'light installation only', otherwise null>",
   "booking_id": "<booking ID if mentioned, otherwise null>",
   "provider_name": "<name of provider or 'best' if auto-booking, otherwise null>"
 }
 
 Examples:
 - "hi" ->
-  {"reply": "Assalamualaikum 😊 Main Sana hoon, aapki AI service assistant. Aapko kis type ki service chahiye today?", "action": "NONE", "service_type": null, "location": null, "booking_id": null, "provider_name": null}
+  {"reply": "Assalamualaikum 😊 Welcome to ServicePilot AI. Main Sana hoon, aapki AI operations concierge. Aapko kis type ki service chahiye today?", "action": "NONE", "service_type": null, "location": null, "timing": null, "urgency": null, "details": null, "booking_id": null, "provider_name": null}
 
-- "Mujhe AC repair chahiye" ->
-  {"reply": "Sure 😊 Aap kis area mein service chahte hain?", "action": "NONE", "service_type": "AC Repair", "location": null, "booking_id": null, "provider_name": null}
+- "Mujhe electrician chahiye jo light laga sake" ->
+  {"reply": "Sure 😊 Main aapki help karti hoon. Aap kis area mein service chahte hain?", "action": "NONE", "service_type": "Electrician", "location": null, "timing": null, "urgency": null, "details": "light installation", "booking_id": null, "provider_name": null}
 
-- "DHA Phase 6" ->
-  {"reply": "Great. Aapko service urgently chahiye ya aap custom timing select karna chahenge?", "action": "NONE", "service_type": "AC Repair", "location": "DHA Phase 6", "booking_id": null, "provider_name": null}
+- "DHA Phase 4" ->
+  {"reply": "Great 👍 Kya aapko service urgently chahiye ya aap custom timing select karna chahenge?", "action": "NONE", "service_type": "Electrician", "location": "DHA Phase 4", "timing": null, "urgency": null, "details": "light installation", "booking_id": null, "provider_name": null}
 
-- "Kal morning" ->
-  {"reply": "Perfect! I found our top verified AC specialists available tomorrow morning near DHA Phase 6. Let me fetch their profiles for you...", "action": "RECOMMEND", "service_type": "AC Repair", "location": "DHA Phase 6", "booking_id": null, "provider_name": null}
+- "Kal evening" ->
+  {"reply": "Perfect. Kya aap sirf light installation chahte hain ya wiring/checking bhi required hai?", "action": "NONE", "service_type": "Electrician", "location": "DHA Phase 4", "timing": "Kal evening", "urgency": "Normal", "details": "light installation", "booking_id": null, "provider_name": null}
+
+- "Sirf light installation" ->
+  {"reply": "Understood 😊 Main verified specialists search kar rahi hoon...", "action": "RECOMMEND", "service_type": "Electrician", "location": "DHA Phase 4", "timing": "Kal evening", "urgency": "Normal", "details": "light installation only", "booking_id": null, "provider_name": null}
 """
 async def parse_intent(user_message: str, chat_history: list = None) -> dict:
     """Parse a user's natural language request into structured intent and agentic actions."""
@@ -168,16 +169,16 @@ async def parse_intent(user_message: str, chat_history: list = None) -> dict:
         service = None
         action = "NONE"
         provider_name = None
+        timing = None
+        urgency = "Normal"
+        details = None
         
         if any(w in msg_lower for w in ["ac", "cooling", "thanda", "compressor"]):
             service = "AC Repair"
-            action = "RECOMMEND"
         elif any(w in msg_lower for w in ["electric", "bijli", "wiring", "short", "light"]):
             service = "Electrician"
-            action = "RECOMMEND"
         elif any(w in msg_lower for w in ["plumb", "pani", "pipe", "leak", "tap"]):
             service = "Plumbing"
-            action = "RECOMMEND"
             
         if any(w in msg_lower for w in ["cancel", "kharij", "wapas"]):
             action = "CANCEL"
@@ -199,6 +200,14 @@ async def parse_intent(user_message: str, chat_history: list = None) -> dict:
                 location = loc.upper() if len(loc) <= 4 else loc.title()
                 break
 
+        # Simple timing extraction
+        for t_word in ["kal", "tomorrow", "evening", "morning", "subah", "sham", "urgent", "jaldi"]:
+            if t_word in msg_lower:
+                timing = "Tomorrow Shift" if ("tomorrow" in msg_lower or "kal" in msg_lower) else "Standard Shift"
+                if "urgent" in msg_lower or "jaldi" in msg_lower:
+                    urgency = "Urgent"
+                break
+
         location_str = f" in {location}" if location else ""
         if service:
             if location:
@@ -216,6 +225,9 @@ async def parse_intent(user_message: str, chat_history: list = None) -> dict:
             "action": action,
             "service_type": service,
             "location": location or None,
+            "timing": timing,
+            "urgency": urgency,
+            "details": details or (service + " service" if service else None),
             "booking_id": None,
             "provider_name": provider_name
         }

@@ -127,6 +127,8 @@ export default function HomeScreen() {
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [detectedService, setDetectedService] = useState<string | null>(null);
   const [detectedLocation, setDetectedLocation] = useState<string | null>(null);
+  const [detectedTiming, setDetectedTiming] = useState<string | null>(null);
+  const [detectedDetails, setDetectedDetails] = useState<string | null>(null);
   const [currentAgent, setCurrentAgent] = useState<AgentProfile>(AGENTS_POOL[0]); // Default to Sana
 
   const [orchestrationLines, setOrchestrationLines] = useState<string[]>([]);
@@ -264,6 +266,8 @@ export default function HomeScreen() {
             setBookingStep(0);
             setDetectedService(null);
             setDetectedLocation(null);
+            setDetectedTiming(null);
+            setDetectedDetails(null);
             
             setMessages((prev) => [
               ...prev,
@@ -288,6 +292,8 @@ export default function HomeScreen() {
             setBookingStep(0);
             setDetectedService(null);
             setDetectedLocation(null);
+            setDetectedTiming(null);
+            setDetectedDetails(null);
             setMessages((prev) => [
               ...prev,
               { role: "agent", text: result.message || "Booking selection cancelled. How else can I assist your home repair today?" }
@@ -312,11 +318,40 @@ export default function HomeScreen() {
         setDetectedService("Electrician");
       }
 
+      let activeLocation = detectedLocation;
+      for (const loc of ["dha", "bahria", "gulberg", "johar", "model town", "national town", "national"]) {
+        if (lowerMsg.includes(loc)) {
+          activeLocation = loc.toUpperCase() === "DHA" ? "DHA Phase 4" : loc.charAt(0).toUpperCase() + loc.slice(1);
+          setDetectedLocation(activeLocation);
+          break;
+        }
+      }
+
+      let activeTiming = detectedTiming;
+      for (const tWord of ["kal", "tomorrow", "evening", "morning", "subah", "sham", "urgent", "jaldi"]) {
+        if (lowerMsg.includes(tWord)) {
+          activeTiming = tWord;
+          setDetectedTiming(tWord);
+          break;
+        }
+      }
+
+      let activeDetails = detectedDetails;
+      if (lowerMsg.includes("installation") || lowerMsg.includes("wiring") || lowerMsg.includes("checking") || lowerMsg.includes("leakage") || lowerMsg.includes("repair") || lowerMsg.includes("sirf")) {
+        activeDetails = userMsg;
+        setDetectedDetails(userMsg);
+      }
+
       // 2. Active intake & conversational diagnostics flow (bookingStep === 0)
       let apiMsg = userMsg;
-      if (activeService && !detectedLocation) {
-        // Transparent session bridge: append service context when user replies with location
-        apiMsg = `${activeService} in ${userMsg}`;
+      if (activeService || activeLocation || activeTiming || activeDetails) {
+        const parts = [];
+        if (activeService) parts.push(`Service: ${activeService}`);
+        if (activeLocation) parts.push(`Location: ${activeLocation}`);
+        if (activeTiming) parts.push(`Timing: ${activeTiming}`);
+        if (activeDetails) parts.push(`Details: ${activeDetails}`);
+        parts.push(`Message: ${userMsg}`);
+        apiMsg = parts.join(" | ");
       }
 
       // Call standard Agentic AI submitRequest:
@@ -327,6 +362,12 @@ export default function HomeScreen() {
         }
         if (result.location) {
           setDetectedLocation(result.location);
+        }
+        if (result.timing) {
+          setDetectedTiming(result.timing);
+        }
+        if (result.details) {
+          setDetectedDetails(result.details);
         }
 
         if (result.action === "BOOK_PROVIDER" && result.provider) {
