@@ -79,43 +79,6 @@ async def parse_intent(user_message: str, chat_history: list = None) -> dict:
         "reasoning": [],
     }
     
-    # --- Greeting & Conversation Agent ---
-    msg_lower = user_message.lower().strip("?!., ")
-    greetings = [
-        "hi", "hello", "salam", "assalamualaikum", "assalam o alaikum", "assalam-o-alaikum",
-        "hey", "good morning", "kya haal hai", "help", "start", "aoa", "heyy", "hy", "who are you"
-    ]
-    
-    is_greeting = False
-    for g in greetings:
-        import re
-        if re.search(rf"\b{re.escape(g)}\b", msg_lower):
-            is_greeting = True
-            break
-            
-    has_service_keywords = any(w in msg_lower for w in ["ac", "cooling", "thanda", "compressor", "leak", "pipe", "plumb", "tap", "electric", "bijli", "wiring", "short", "light", "wash", "mechanic", "car", "tv", "fridge"])
-    
-    if is_greeting and not has_service_keywords and len(msg_lower) < 35:
-        trace["reasoning"].append("GreetingAgent: Intercepted general greeting/conversation.")
-        trace["status"] = "success"
-        
-        import random
-        greetings_responses = [
-            "Assalamualaikum 😊 Welcome to ServicePilot AI. Main Sana hoon, aapki AI operations concierge. Main aaj aapki kya madad kar sakti hoon?",
-            "Hello 👋 Main Sana hoon, aapki AI service assistant. Aapko kis type ki service chahiye today?",
-            "Assalamualaikum 😊 Welcome to ServicePilot. Main Sana hoon, aapki home service manager. Aapko booking ya technician search mein madad chahiye?"
-        ]
-        reply = random.choice(greetings_responses)
-        intent = {
-            "reply": reply,
-            "action": "NONE",
-            "service_type": None,
-            "location": None,
-            "booking_id": None,
-            "provider_name": None
-        }
-        return {"intent": intent, "trace": trace, "requires_clarification": False}
-        
     history_context = ""
     if chat_history:
         history_context = "\nConversation history so far:\n"
@@ -218,7 +181,7 @@ async def parse_intent(user_message: str, chat_history: list = None) -> dict:
             reply = "Sana here 😊 Aap kis service (AC Repair, Plumbing, ya Electrician) ke baare mein pooch rahe hain? Please details batayein taake main active specialists search kar sakoon!"
             
         if any(w in msg_lower for w in ["hi", "hello", "salam", "aoa", "hey", "assalam"]):
-            reply = "Assalamualaikum 😊 Main Sana hoon, aapki AI operations concierge. Aapko aaj kis service (AC repair, plumbing, ya electrician) mein madad chahiye? Please details batayein!"
+            reply = "Assalamualaikum 😊 Welcome to ServicePilot AI. Main Sana hoon, aapki AI operations concierge. Aapko kis type ki service chahiye today?"
             
         fallback = {
             "reply": reply,
