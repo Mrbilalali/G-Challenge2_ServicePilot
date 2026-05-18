@@ -186,12 +186,17 @@ async def parse_intent(user_message: str) -> dict:
                 break
             
         location = ""
-        for loc in ["dha", "bahria", "gulberg", "johar", "model town"]:
+        for loc in ["dha", "bahria", "gulberg", "johar", "model town", "national town", "national"]:
             if loc in msg_lower:
                 location = loc.upper() if len(loc) <= 4 else loc.title()
                 break
 
-        reply = "Sana here 😊 Aap kis service (AC Repair, Plumbing, ya Electrician) ke baare mein pooch rahe hain? Please details batayein taake main active specialists search kar sakoon!"
+        location_str = f" in {location}" if location else ""
+        if service:
+            reply = f"Perfect! Main aap ke liye best active {service} specialists dhoond rahi hoon{location_str}..."
+        else:
+            reply = "Sana here 😊 Aap kis service (AC Repair, Plumbing, ya Electrician) ke baare mein pooch rahe hain? Please details batayein taake main active specialists search kar sakoon!"
+            
         if any(w in msg_lower for w in ["hi", "hello", "salam", "aoa", "hey", "assalam"]):
             reply = "Assalamualaikum 😊 Main Sana hoon, aapki AI operations concierge. Aapko aaj kis service (AC repair, plumbing, ya electrician) mein madad chahiye? Please details batayein!"
             
