@@ -365,7 +365,7 @@ async def process_service_request(
         matched_list.append({
             "id": p["id"],
             "name": p["name"],
-            "rate": p_price["pricing"]["total_amount"],
+            "rate": p_price["pricing"].get("total", p_price["pricing"].get("total_amount", 1000)),
             "rating": p.get("rating", 4.7),
             "area": intent.get("location") or p.get("area") or "DHA Lahore",
             "specialization": p.get("specializations", ["Verified Specialist"])[0],
