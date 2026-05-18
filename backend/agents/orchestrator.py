@@ -15,6 +15,78 @@ from core.database import (db_create_booking, db_get_booking, db_update_booking,
                            db_save_external_provider, db_log_search, db_get_wallet, db_get_bookings, db_create_escrow,
                            db_get_providers, db_update_wallet, db_add_wallet_transaction)
 
+class LangConciergeState:
+    """State tracking object for the ServicePilot AI Concierge LangGraph workflow."""
+    def __init__(self, service=None, location=None, timing=None, details=None, chat_history=None):
+        self.service = service
+        self.location = location
+        self.timing = timing
+        self.details = details
+        self.chat_history = chat_history or []
+
+class LangConciergeStateGraph:
+    """A custom LangGraph-like state node transition graph for ServicePilot AI Concierge."""
+    def __init__(self):
+        self.nodes = {
+            "node_greet": self.node_greet,
+            "node_collect_location": self.node_collect_location,
+            "node_collect_timing": self.node_collect_timing,
+            "node_collect_details": self.node_collect_details,
+            "node_recommend": self.node_recommend
+        }
+
+    def determine_next_node(self, state: LangConciergeState) -> str:
+        if not state.service:
+            return "node_greet"
+        if not state.location:
+            return "node_collect_location"
+        if not state.timing:
+            return "node_collect_timing"
+        if not state.details:
+            return "node_collect_details"
+        return "node_recommend"
+
+    async def execute(self, state: LangConciergeState) -> dict:
+        next_node = self.determine_next_node(state)
+        node_func = self.nodes[next_node]
+        return await node_func(state)
+
+    async def node_greet(self, state: LangConciergeState) -> dict:
+        return {
+            "action": "NONE",
+            "reply": "Assalamualaikum 😊 Welcome to ServicePilot AI. Main Sana hoon, aapki AI operations concierge. Main aaj aapki kya madad kar sakti hoon? Aapko kis type ka specialist chahiye today?"
+        }
+
+    async def node_collect_location(self, state: LangConciergeState) -> dict:
+        return {
+            "action": "NONE",
+            "reply": f"Sure 😊\nMain {state.service} service mein aapki help karti hoon. Aap Lahore mein kis neighborhood/area (e.g. DHA, Gulberg, Johar Town) par {state.service} specialist chahte hain?"
+        }
+
+    async def node_collect_timing(self, state: LangConciergeState) -> dict:
+        return {
+            "action": "NONE",
+            "reply": f"Great 👍\nKya aapko service urgently chahiye ya aap custom timing select karna chahenge?"
+        }
+
+    async def node_collect_details(self, state: LangConciergeState) -> dict:
+        if state.service == "Electrician":
+            reply = "Perfect.\nKya aap sirf light installation chahte hain ya wiring/checking bhi required hai?"
+        elif state.service == "AC Repair":
+            reply = "Perfect.\nKya AC mein gas leak ka issue hai ya checking and filter service required hai?"
+        else:
+            reply = "Perfect.\nKya pipe leakage ka issue hai ya new fitting and repair required hai?"
+        return {
+            "action": "NONE",
+            "reply": reply
+        }
+
+    async def node_recommend(self, state: LangConciergeState) -> dict:
+        return {
+            "action": "RECOMMEND",
+            "reply": f"Understood 😊 Main verified {state.service} specialists search kar rahi hoon near {state.location}..."
+        }
+
 
 async def process_service_request(
     user_message: str,
@@ -236,44 +308,24 @@ async def process_service_request(
         if any(w in msg_lower for w in ["jo light", "leakage", "leak", "pipe", "reparing", "installation", "fitting", "thek kr", "sirf"]):
             details = "Resolved Details"
 
-    # Update intent payload
-    intent["service_type"] = service
-    intent["location"] = location
-    intent["timing"] = timing
-    intent["details"] = details
-
-    # Determine missing critical requirements
-    critical_missing = []
-    if not service:
-        critical_missing.append("service")
-    if not location:
-        critical_missing.append("location")
-    if not timing:
-        critical_missing.append("timing")
-    if not details:
-        critical_missing.append("details")
-
-    # If any required requirement is missing, downgrade action and generate perfect conversational reply
-    if critical_missing:
-        intent["action"] = "NONE"
-        if "service" in critical_missing:
-            intent["reply"] = "Sana here 😊 Aapko kis type ki service (AC Repair, Plumbing, ya Electrician) chahiye today? Mujhe details batayein!"
-        elif "location" in critical_missing:
-            intent["reply"] = f"Sure 😊\nMain {service} service mein aapki help karti hoon. Aap Lahore mein kis neighborhood/area (e.g. DHA, Gulberg, Johar Town) par {service} specialist chahte hain?"
-        elif "timing" in critical_missing:
-            intent["reply"] = f"Great 👍\nKya aapko service urgently chahiye ya aap custom timing select karna chahenge?"
-        elif "details" in critical_missing:
-            if service == "Electrician":
-                intent["reply"] = f"Perfect.\nKya aap sirf light installation chahte hain ya wiring/checking bhi required hai?"
-            elif service == "AC Repair":
-                intent["reply"] = f"Perfect.\nKya AC mein gas leak ka issue hai ya checking and filter service required hai?"
-            else:
-                intent["reply"] = f"Perfect.\nKya pipe leakage ka issue hai ya new fitting and repair required hai?"
-    else:
-        # All 4 requirements resolved: upgrade to RECOMMEND
-        intent["action"] = "RECOMMEND"
-        intent["reply"] = f"Understood 😊 Main verified {service} specialists search kar rahi hoon near {location}..."
-
+    # Upgrade/update intent payload using LangConciergeStateGraph (LangGraph/LangChain feature integration)
+    lang_state = LangConciergeState(
+        service=service,
+        location=location,
+        timing=timing,
+        details=details,
+        chat_history=chat_history
+    )
+    lang_graph = LangConciergeStateGraph()
+    graph_res = await lang_graph.execute(lang_state)
+    
+    intent["service_type"] = lang_state.service
+    intent["location"] = lang_state.location
+    intent["timing"] = lang_state.timing
+    intent["details"] = lang_state.details
+    intent["action"] = graph_res["action"]
+    intent["reply"] = graph_res["reply"]
+    
     action = intent.get("action", "NONE")
     
     # ML/DL Agentic Multi-Task Actions execution
