@@ -90,9 +90,9 @@ interface AgentProfile {
 }
 
 const AGENTS_POOL: AgentProfile[] = [
-  { name: "Aisha", role: "AI Concierge", avatarLetter: "A", avatarBg: "#ec4899", gender: "female" },
+  { name: "Sana", role: "AI Operations Concierge", avatarLetter: "S", avatarBg: "#f43f5e", gender: "female" },
   { name: "Zara", role: "AI Coordinator", avatarLetter: "Z", avatarBg: "#8b5cf6", gender: "female" },
-  { name: "Sana", role: "AI Helper", avatarLetter: "S", avatarBg: "#f43f5e", gender: "female" },
+  { name: "Aisha", role: "AI Concierge", avatarLetter: "A", avatarBg: "#ec4899", gender: "female" },
   { name: "Mariam", role: "AI Dispatcher", avatarLetter: "M", avatarBg: "#06b6d4", gender: "female" },
   { name: "Alina", role: "AI Guide", avatarLetter: "A", avatarBg: "#10b981", gender: "female" },
   { name: "Laiba", role: "AI Specialist", avatarLetter: "L", avatarBg: "#eab308", gender: "female" },
@@ -108,7 +108,7 @@ export default function HomeScreen() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "system",
-      text: "[SYSTEM] AI Orchestration Engine Online\nMulti-Agent Pipeline: READY\nAwaiting service intent...",
+      text: "[SYSTEM] ServicePilot AI Concierge Sana: Online\nCognitive Operations Module: ACTIVE\nAwaiting service request...",
     },
   ]);
   const [loading, setLoading] = useState(false);
@@ -127,11 +127,35 @@ export default function HomeScreen() {
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [detectedService, setDetectedService] = useState<string | null>(null);
   const [detectedLocation, setDetectedLocation] = useState<string | null>(null);
-  const [currentAgent, setCurrentAgent] = useState<AgentProfile>(AGENTS_POOL[0]);
+  const [currentAgent, setCurrentAgent] = useState<AgentProfile>(AGENTS_POOL[0]); // Default to Sana
+
+  const ORCHESTRATION_STATES = [
+    "Understanding your request...",
+    "Searching trusted providers...",
+    "Comparing technician reliability...",
+    "Optimizing available slots...",
+    "Preparing secure booking...",
+    "Confirming technician availability..."
+  ];
+
+  const [orchestrationIndex, setOrchestrationIndex] = useState(0);
+
+  React.useEffect(() => {
+    let interval: any;
+    if (loading) {
+      setOrchestrationIndex(0);
+      interval = setInterval(() => {
+        setOrchestrationIndex((prev) => (prev + 1) % ORCHESTRATION_STATES.length);
+      }, 1500);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [loading]);
 
   const openChatMode = () => {
-    const randomIndex = Math.floor(Math.random() * AGENTS_POOL.length);
-    setCurrentAgent(AGENTS_POOL[randomIndex]);
+    // Select Sana as the master AI Operations Concierge!
+    setCurrentAgent(AGENTS_POOL[0]);
     setIsChatMode(true);
   };
 
@@ -536,13 +560,18 @@ export default function HomeScreen() {
               <View style={styles.agentAvatar}>
                 <Ionicons name="sparkles" size={14} color="#fff" />
               </View>
-              <View style={[styles.bubble, styles.agentBubble, { paddingVertical: 18 }]}>
-                <View style={styles.typingIndicator}>
-                  <View style={styles.typingDot} />
-                  <View style={[styles.typingDot, { opacity: 0.7 }]} />
-                  <View style={[styles.typingDot, { opacity: 0.4 }]} />
+              <View style={[styles.bubble, styles.agentBubble, { paddingVertical: 14, borderLeftWidth: 3, borderLeftColor: '#f43f5e', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 3 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <View style={styles.typingIndicator}>
+                    <View style={styles.typingDot} />
+                    <View style={[styles.typingDot, { opacity: 0.7 }]} />
+                    <View style={[styles.typingDot, { opacity: 0.4 }]} />
+                  </View>
+                  <Text style={{ fontSize: 9, color: '#f43f5e', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.8 }}>Sana is thinking...</Text>
                 </View>
-                <Text style={styles.loadingText}>Agents Orchestrating...</Text>
+                <Text style={[styles.loadingText, { color: '#0f172a', fontWeight: '600', fontSize: 13, marginTop: 2 }]}>
+                  {ORCHESTRATION_STATES[orchestrationIndex]}
+                </Text>
               </View>
             </View>
           )}

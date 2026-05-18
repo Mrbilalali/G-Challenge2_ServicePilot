@@ -236,27 +236,53 @@ async def process_service_request(
         
     elif action == "BOOK_PROVIDER":
         provider_q = intent.get("provider_name", "")
+        service_type = intent.get("service_type") or "AC Repair"
         providers = db_get_providers()
         matched = None
+        
+        # Check if the user wants auto-booking/best selection
+        is_auto_book = False
         if provider_q:
+            pq = provider_q.lower()
+            if any(w in pq for w in ["best", "top", "koi bhi", "aap hi", "reserve", "confirm", "final"]):
+                is_auto_book = True
+        else:
+            is_auto_book = True
+            
+        if is_auto_book:
+            # Dynamically select the best provider in active service category
+            category_providers = []
+            mock_providers = [
+                { "id": "PRV-001", "name": "Ahmed Cooling Services", "base_rate": 1200, "rating": 4.8, "area": "Lahore", "specialization": "AC Repair & Gas Refill Expert", "service": "AC Repair" },
+                { "id": "PRV-002", "name": "Bilal AC Repair & Gas Fillers", "base_rate": 800, "rating": 4.6, "area": "Lahore", "specialization": "Budget AC Servicing", "service": "AC Repair" },
+                { "id": "PRV-003", "name": "Lahore Pro Cooling Dispatch", "base_rate": 1400, "rating": 4.9, "area": "Lahore", "specialization": "Fast Emergency AC Fixing", "service": "AC Repair" },
+                { "id": "PLB-001", "name": "Asif Plumbing Masters", "base_rate": 1000, "rating": 4.7, "area": "Lahore", "specialization": "High-Pressure Leakage Expert", "service": "Plumbing" },
+                { "id": "PLB-002", "name": "DHA Plumbers Ltd", "base_rate": 750, "rating": 4.5, "area": "Lahore", "specialization": "General Piping & Drainage", "service": "Plumbing" },
+                { "id": "ELC-001", "name": "Zahid Electric Hub", "base_rate": 1100, "rating": 4.8, "area": "Lahore", "specialization": "Short Circuit & Fault Finder", "service": "Electrician" }
+            ]
+            st = service_type.lower()
+            for p in mock_providers:
+                if st in p["service"].lower() or (st == "plumbing" and "plumbing" in p["service"].lower()) or (st == "electrician" and "electrician" in p["service"].lower()):
+                    category_providers.append(p)
+            if category_providers:
+                category_providers.sort(key=lambda x: x["rating"], reverse=True)
+                matched = category_providers[0]
+        else:
             pq = provider_q.lower()
             for p in providers:
                 if pq in p["name"].lower():
                     matched = p
                     break
-        
-        if not matched:
-            # Fallback mock search for common providers
-            mock_providers = [
-                { "id": "PRV-001", "name": "Ahmed Cooling Services", "base_rate": 1200, "rating": 4.8, "area": "Lahore", "specialization": "AC Repair & Gas Refill Expert" },
-                { "id": "PRV-002", "name": "Bilal AC Repair & Gas Fillers", "base_rate": 800, "rating": 4.6, "area": "Lahore", "specialization": "Budget AC Servicing" },
-                { "id": "PRV-003", "name": "Lahore Pro Cooling Dispatch", "base_rate": 1400, "rating": 4.9, "area": "Lahore", "specialization": "Fast Emergency AC Fixing" },
-                { "id": "PLB-001", "name": "Asif Plumbing Masters", "base_rate": 1000, "rating": 4.7, "area": "Lahore", "specialization": "High-Pressure Leakage Expert" },
-                { "id": "PLB-002", "name": "DHA Plumbers Ltd", "base_rate": 750, "rating": 4.5, "area": "Lahore", "specialization": "General Piping & Drainage" },
-                { "id": "ELC-001", "name": "Zahid Electric Hub", "base_rate": 1100, "rating": 4.8, "area": "Lahore", "specialization": "Short Circuit & Fault Finder" }
-            ]
-            if provider_q:
-                pq = provider_q.lower()
+            
+            if not matched:
+                mock_providers = [
+                    { "id": "PRV-001", "name": "Ahmed Cooling Services", "base_rate": 1200, "rating": 4.8, "area": "Lahore", "specialization": "AC Repair & Gas Refill Expert" },
+                    { "id": "PRV-002", "name": "Bilal AC Repair & Gas Fillers", "base_rate": 800, "rating": 4.6, "area": "Lahore", "specialization": "Budget AC Servicing" },
+                    { "id": "PRV-003", "name": "Lahore Pro Cooling Dispatch", "base_rate": 1400, "rating": 4.9, "area": "Lahore", "specialization": "Fast Emergency AC Fixing" },
+                    { "id": "PLB-001", "name": "Asif Plumbing Masters", "base_rate": 1000, "rating": 4.7, "area": "Lahore", "specialization": "High-Pressure Leakage Expert" },
+                    { "id": "PLB-002", "name": "DHA Plumbers Ltd", "base_rate": 750, "rating": 4.5, "area": "Lahore", "specialization": "General Piping & Drainage" },
+                    { "id": "ELC-001", "name": "Zahid Electric Hub", "base_rate": 1100, "rating": 4.8, "area": "Lahore", "specialization": "Short Circuit & Fault Finder" }
+                ]
                 for p in mock_providers:
                     if pq in p["name"].lower():
                         matched = p
@@ -274,13 +300,14 @@ async def process_service_request(
                     "area": matched.get("area") or "DHA Lahore",
                     "specialization": matched.get("specialization") or "Verified Specialist"
                 },
-                "message": f"You selected {matched['name']}.\n\nAvailable slots:\n• 10:00 AM (Recommended)\n• 1:30 PM\n• 5:00 PM\n\nWhich slot do you prefer? (You can also reply with a custom time, e.g., \"6 baje\")",
+                "message": f"Sana here 😊 Main ne aap ke liye humara best expert {matched['name']} select kar liya hai!\n\nAvailable slots:\n• 10:00 AM (Recommended)\n• 1:30 PM\n• 5:00 PM\n\nWhich slot do you prefer? (Aap custom timing bhi bata sakte hain, jaise \"1:30 PM\")",
                 "traces": all_traces
             }
         else:
             return {
                 "booking": None,
-                "message": f"Assalam o Alaikum! Main aapka bataya hua provider '{provider_q}' nahi dhoond saki. Please correct name batayein.",
+                "action": "NONE",
+                "message": f"Main aapka bataya hua provider '{provider_q}' nahi dhoond saki. Please correct name batayein ya 'best' bol kar auto-book karwein!",
                 "traces": all_traces
             }
         
