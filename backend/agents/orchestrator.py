@@ -257,9 +257,9 @@ async def process_service_request(
     if critical_missing:
         intent["action"] = "NONE"
         if "service" in critical_missing:
-            intent["reply"] = "Sana here 😊 Aap kis service (AC Repair, Plumbing, ya Electrician) ke baare mein pooch rahe hain? Please details batayein!"
+            intent["reply"] = "Sana here 😊 Aapko kis type ki service (AC Repair, Plumbing, ya Electrician) chahiye today? Mujhe details batayein!"
         elif "location" in critical_missing:
-            intent["reply"] = f"Sure 😊\nMain aapki help karti hoon.\n\nAap kis area mein service chahte hain?"
+            intent["reply"] = f"Sure 😊\nMain {service} service mein aapki help karti hoon. Aap Lahore mein kis neighborhood/area (e.g. DHA, Gulberg, Johar Town) par {service} specialist chahte hain?"
         elif "timing" in critical_missing:
             intent["reply"] = f"Great 👍\nKya aapko service urgently chahiye ya aap custom timing select karna chahenge?"
         elif "details" in critical_missing:

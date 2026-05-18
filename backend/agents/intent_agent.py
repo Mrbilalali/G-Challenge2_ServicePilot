@@ -178,7 +178,7 @@ async def parse_intent(user_message: str, chat_history: list = None) -> dict:
             else:
                 reply = f"Sure 😊 Aap Lahore mein kis area/location (e.g. DHA, Gulberg, Johar Town) par {service} service chahte hain?"
         else:
-            reply = "Sana here 😊 Aap kis service (AC Repair, Plumbing, ya Electrician) ke baare mein pooch rahe hain? Please details batayein taake main active specialists search kar sakoon!"
+            reply = "Sana here 😊 Aapko kis type ki service (AC Repair, Plumbing, ya Electrician) chahiye today? Mujhe details batayein!"
             
         if any(w in msg_lower for w in ["hi", "hello", "salam", "aoa", "hey", "assalam"]):
             reply = "Assalamualaikum 😊 Welcome to ServicePilot AI. Main Sana hoon, aapki AI operations concierge. Aapko kis type ki service chahiye today?"
