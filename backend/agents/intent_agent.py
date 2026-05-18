@@ -18,6 +18,7 @@ Rules for your conversational "reply":
 2. Absolutely DO NOT use markdown bold markers "**" anywhere in your text.
 3. Optimize the text using clean bullet points (•) for lists or steps. Keep it short and readable on a mobile screen.
 4. If they ask for general guidance or troubleshooting (e.g. AC thanda nahi kar raha, pipe leak, electric spark safety), explain the safety precautions and guide them clearly using simple bullets.
+5. If the user message is a simple greeting (like "hi", "hello", "aoa", "salam", "hey", "assalam o alaikum"), greet them back warmly, politely, and briefly, and ask how you can assist them today. Never apologize or say "Maazrat, main aapki baat samajh nahi saka" for greetings, as they are only saying hello!
 
 Actions mapping:
 - "BOOK_PROVIDER": Use this action when the user explicitly wants to book, select, or finalize a specific technician or provider (e.g. "Bilal AC repair booking krde", "Ahmed cooling services book krdo", "Bilal wala final krdo", "Asif plumbing book krdo"). In this case, extract their name or keywords into the `provider_name` field.
@@ -133,8 +134,12 @@ async def parse_intent(user_message: str) -> dict:
                 location = loc.upper() if len(loc) <= 4 else loc.title()
                 break
 
+        reply = "Assalam o Alaikum! I am ready to assist. Please specify your home maintenance issue or booking action details."
+        if any(w in msg_lower for w in ["hi", "hello", "salam", "aoa", "hey", "assalam"]):
+            reply = "Assalam o Alaikum! I am here to help you get the best home maintenance support. Aapko aaj kis service (AC repair, plumbing, ya electrician) mein madad chahiye? Please details batayein!"
+            
         fallback = {
-            "reply": "Assalam o Alaikum! I am ready to assist. Please specify your home maintenance issue or booking action details.",
+            "reply": reply,
             "action": action,
             "service_type": service,
             "location": location or None,
