@@ -23,6 +23,14 @@ app.add_middleware(
 
 app.include_router(router, prefix=settings.API_PREFIX)
 
+from fastapi import WebSocket
+from websocket.chat_server import handle_chat_websocket
+
+@app.websocket("/ws/chat/{room_id}")
+async def websocket_chat_endpoint(websocket: WebSocket, room_id: str):
+    await handle_chat_websocket(websocket, room_id)
+
+
 
 @app.get("/")
 async def root():

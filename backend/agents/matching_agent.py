@@ -111,8 +111,11 @@ async def match_providers(intent: dict, exclude_ids: list[str] | None = None) ->
         rating_score = max(0, (p.get("rating", 1) - 1) / 4)
         
         # 4. Recency Score
-        total_revs = p.get("review_count", 1)
-        recent_revs = len(p.get("recent_reviews", []))
+        total_revs = p.get("review_count", 1) if isinstance(p, dict) else getattr(p, "review_count", 1)
+        reviews = getattr(p, "reviews", []) or []
+        if isinstance(p, dict):
+            reviews = p.get("reviews", []) or p.get("recent_reviews", []) or []
+        recent_revs = len(reviews)
         recency_score = min(1.0, recent_revs / max(1, total_revs))
         
         # 5. Reliability Score

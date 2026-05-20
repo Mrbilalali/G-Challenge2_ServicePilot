@@ -3,12 +3,9 @@ Intent Understanding & Agentic AI Core
 Parses multilingual requests (Urdu, Roman Urdu, English) and extracts structured intent and agentic actions.
 """
 import json
-import google.generativeai as genai
 from core import settings
 
-genai.configure(api_key=settings.GEMINI_API_KEY)
-
-SYSTEM_PROMPT = """You are "Sana", the highly intelligent, premium, human-like AI Operations Concierge for ServicePilot, a top-tier home services platform in Pakistan.
+SYSTEM_PROMPT = """You are "ServicePilot AI Agent", the highly intelligent, premium, human-like AI Operations Concierge for ServicePilot, a top-tier home services platform in Pakistan.
 You speak with a warm, friendly, polite, and professional Roman Urdu and English conversational mix.
 You are powered by state-of-the-art ML/DL agentic systems and have direct orchestrational control over booking, scheduling, matching, and escrow payment systems.
 
@@ -56,7 +53,7 @@ You must return ONLY a valid JSON object matching this schema:
 
 Examples:
 - "hi" ->
-  {"reply": "Assalamualaikum 😊 Welcome to ServicePilot AI. Main Sana hoon, aapki AI operations concierge. Aapko kis type ki service chahiye today?", "action": "NONE", "service_type": null, "location": null, "timing": null, "urgency": null, "details": null, "booking_id": null, "provider_name": null}
+  {"reply": "Assalamualaikum 😊 Welcome to ServicePilot AI. Main aapki AI operations concierge hoon. Aapko kis type ki service chahiye today?", "action": "NONE", "service_type": null, "location": null, "timing": null, "urgency": null, "details": null, "booking_id": null, "provider_name": null}
 
 - "Mujhe electrician chahiye jo light laga sake" ->
   {"reply": "Sure 😊 Main aapki help karti hoon. Aap kis area mein service chahte hain?", "action": "NONE", "service_type": "Electrician", "location": null, "timing": null, "urgency": null, "details": "light installation", "booking_id": null, "provider_name": null}
@@ -79,25 +76,30 @@ async def parse_intent(user_message: str, chat_history: list = None) -> dict:
         "reasoning": [],
     }
     
+    # 1. Check static bypass to save quota
+    from core.ai_manager import ai_manager
+    static_res = ai_manager.get_static_fallback(user_message)
+    if static_res:
+        trace["reasoning"].append("Bypassed LLM API via static greeting/action cache.")
+        trace["output"] = static_res
+        trace["status"] = "success"
+        return {"intent": static_res, "trace": trace, "requires_clarification": False}
+
     history_context = ""
     if chat_history:
         history_context = "\nConversation history so far:\n"
         for msg in chat_history[-6:]:
-            role_name = "User" if msg.get("role") == "user" else "Sana"
+            role_name = "User" if msg.get("role") == "user" else "AI Agent"
             history_context += f"{role_name}: {msg.get('text')}\n"
 
     try:
-        model = genai.GenerativeModel(settings.GEMINI_MODEL)
-        prompt = f"{SYSTEM_PROMPT}\n{history_context}\nUser message: \"{user_message}\""
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.2,
-                max_output_tokens=800,
-            )
+        prompt = f"{history_context}\nUser message: \"{user_message}\""
+        raw = await ai_manager.generate_content_with_retry(
+            prompt=prompt,
+            system_prompt=SYSTEM_PROMPT,
+            temperature=0.2,
+            max_output_tokens=800
         )
-        
-        raw = response.text.strip()
         # Clean markdown code fences if present
         if "```json" in raw:
             raw = raw.split("```json")[1]
@@ -120,83 +122,11 @@ async def parse_intent(user_message: str, chat_history: list = None) -> dict:
         
         trace["output"] = intent
         trace["status"] = "success"
-        
         return {"intent": intent, "trace": trace, "requires_clarification": False}
-        
     except Exception as e:
         trace["reasoning"].append(f"Gemini API parse error: {str(e)}")
-        trace["status"] = "fallback"
-        
-        # Smart keyword-based fallback so the pipeline never breaks
-        msg_lower = user_message.lower()
-        service = None
-        action = "NONE"
-        provider_name = None
-        timing = None
-        urgency = "Normal"
-        details = None
-        
-        if any(w in msg_lower for w in ["ac", "cooling", "thanda", "compressor"]):
-            service = "AC Repair"
-        elif any(w in msg_lower for w in ["electric", "bijli", "wiring", "short", "light"]):
-            service = "Electrician"
-        elif any(w in msg_lower for w in ["plumb", "pani", "pipe", "leak", "tap"]):
-            service = "Plumbing"
-            
-        if any(w in msg_lower for w in ["cancel", "kharij", "wapas"]):
-            action = "CANCEL"
-        elif any(w in msg_lower for w in ["balance", "wallet", "paisa", "rupay"]):
-            action = "WALLET"
-        elif any(w in msg_lower for w in ["status", "track", "check"]):
-            action = "CHECK_STATUS"
-            
-        # Detect booking keywords
-        for p_key in ["bilal", "ahmed", "lahore pro", "asif", "dha plumber", "zahid"]:
-            if p_key in msg_lower and any(w in msg_lower for w in ["book", "select", "final", "lock", "krde"]):
-                action = "BOOK_PROVIDER"
-                provider_name = p_key
-                break
-            
-        location = ""
-        for loc in ["dha", "bahria", "gulberg", "johar", "model town", "national town", "national"]:
-            if loc in msg_lower:
-                location = loc.upper() if len(loc) <= 4 else loc.title()
-                break
-
-        # Simple timing extraction
-        for t_word in ["kal", "tomorrow", "evening", "morning", "subah", "sham", "urgent", "jaldi"]:
-            if t_word in msg_lower:
-                timing = "Tomorrow Shift" if ("tomorrow" in msg_lower or "kal" in msg_lower) else "Standard Shift"
-                if "urgent" in msg_lower or "jaldi" in msg_lower:
-                    urgency = "Urgent"
-                break
-
-        location_str = f" in {location}" if location else ""
-        if service:
-            if location:
-                reply = f"Perfect! Main aap ke liye best active {service} specialists dhoond rahi hoon{location_str}..."
-            else:
-                reply = f"Sure 😊 Aap Lahore mein kis area/location (e.g. DHA, Gulberg, Johar Town) par {service} service chahte hain?"
-        else:
-            reply = "Sana here 😊 Aapko kis type ki service (AC Repair, Plumbing, ya Electrician) chahiye today? Mujhe details batayein!"
-            
-        if any(w in msg_lower for w in ["hi", "hello", "salam", "aoa", "hey", "assalam"]):
-            reply = "Assalamualaikum 😊 Welcome to ServicePilot AI. Main Sana hoon, aapki AI operations concierge. Aapko kis type ki service chahiye today?"
-            
-        fallback = {
-            "reply": reply,
-            "action": action,
-            "service_type": service,
-            "location": location or None,
-            "timing": timing,
-            "urgency": urgency,
-            "details": details or (service + " service" if service else None),
-            "booking_id": None,
-            "provider_name": provider_name
-        }
-        
-        trace["reasoning"].append(f"⚡ Keyword fallback activated: {action} / {service}")
-        return {"intent": fallback, "trace": trace, "requires_clarification": False}
+        trace["status"] = "failed"
+        raise Exception("API failure in parse_intent") from e
 
 
 async def generate_checkout_chat(
@@ -241,33 +171,12 @@ Instructions based on the booking step:
   Reassure them that their technician is locked and will arrive on time. Keep the tone warm and natural, not robotic.
 """
     try:
-        model = genai.GenerativeModel(settings.GEMINI_MODEL)
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.7,
-                max_output_tokens=600,
-            )
+        from core.ai_manager import ai_manager
+        raw = await ai_manager.generate_content_with_retry(
+            prompt=prompt,
+            temperature=0.7,
+            max_output_tokens=600
         )
-        return response.text.strip()
-    except Exception:
-        # High quality backup fallback
-        if step == 1:
-            return (
-                f"Thik hai! Main kal ke liye aapka slot '{time_slot}' lock kar rahi hoon.\n\n"
-                f"🧾 **Payment Receipt & Escrow Summary**:\n"
-                f"• Provider Base Rate: Rs. {rate}\n"
-                f"• Platform Safe Escrow Fee: Rs. {fee}\n"
-                f"• Total Amount to Hold: Rs. {total}\n\n"
-                f"Guaranteed Protection: Ye raqam platform security hold mein rahegi aur kaam mukammal hone par technician ko release hogi. "
-                f"Kya main booking confirm kar ke amount hold kar doon? Please reply with 'YES' or 'CONFIRM' to authorize."
-            )
-        else:
-            return (
-                f"🎉 **Booking Confirmed under Secure Escrow Protection!**\n\n"
-                f"Receipt & Scheduling Details:\n"
-                f"• Specialist: {provider_name}\n"
-                f"• Time Slot Locked: tomorrow, {time_slot}\n"
-                f"• Payout Secure Hold: Rs. {total} (held securely)\n\n"
-                f"I have successfully scheduled your booking. The specialist will arrive on time! You can track details in My Bookings."
-            )
+        return raw
+    except Exception as e:
+        raise Exception("API failure in generate_checkout_chat") from e

@@ -6,7 +6,15 @@ node_modules/
 # Backend Secrets & Runtime Cache
 __pycache__/
 *.pyc
+.env
+.env.*
+*.db
+*.sqlite
+*.sqlite3
 
 # Local systems
 .DS_Store
 *.swp
+.idea/
+.vscode/
+

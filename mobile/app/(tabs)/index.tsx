@@ -90,7 +90,7 @@ interface AgentProfile {
 }
 
 const AGENTS_POOL: AgentProfile[] = [
-  { name: "Sana", role: "AI Operations Concierge", avatarLetter: "S", avatarBg: "#f43f5e", gender: "female" },
+  { name: "AI Agent", role: "AI Operations Concierge", avatarLetter: "A", avatarBg: "#f43f5e", gender: "female" },
   { name: "Zara", role: "AI Coordinator", avatarLetter: "Z", avatarBg: "#8b5cf6", gender: "female" },
   { name: "Aisha", role: "AI Concierge", avatarLetter: "A", avatarBg: "#ec4899", gender: "female" },
   { name: "Mariam", role: "AI Dispatcher", avatarLetter: "M", avatarBg: "#06b6d4", gender: "female" },
@@ -108,7 +108,7 @@ export default function HomeScreen() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "system",
-      text: "[SYSTEM] ServicePilot AI Concierge Sana: Online\nCognitive Operations Module: ACTIVE\nAwaiting service request...",
+      text: "[SYSTEM] ServicePilot AI Concierge: Online\nCognitive Operations Module: ACTIVE\nAwaiting service request...",
     },
   ]);
   const [loading, setLoading] = useState(false);
@@ -129,14 +129,14 @@ export default function HomeScreen() {
   const [detectedLocation, setDetectedLocation] = useState<string | null>(null);
   const [detectedTiming, setDetectedTiming] = useState<string | null>(null);
   const [detectedDetails, setDetectedDetails] = useState<string | null>(null);
-  const [currentAgent, setCurrentAgent] = useState<AgentProfile>(AGENTS_POOL[0]); // Default to Sana
+  const [currentAgent, setCurrentAgent] = useState<AgentProfile>(AGENTS_POOL[0]); // Default to AI Agent
 
   const [orchestrationLines, setOrchestrationLines] = useState<string[]>([]);
 
   React.useEffect(() => {
     let timeouts: any[] = [];
     if (loading) {
-      setOrchestrationLines(["🧠 Sana AI: Understanding request..."]);
+      setOrchestrationLines(["🧠 AI Agent: Understanding request..."]);
       
       const feed = [
         "📍 Location Agent: Detecting service location...",
@@ -162,7 +162,7 @@ export default function HomeScreen() {
   }, [loading]);
 
   const openChatMode = () => {
-    // Select Sana as the master AI Operations Concierge!
+    // Select AI Agent as the master AI Operations Concierge!
     setCurrentAgent(AGENTS_POOL[0]);
     setIsChatMode(true);
   };
@@ -633,7 +633,7 @@ export default function HomeScreen() {
                     <View style={[styles.typingDot, { opacity: 0.7 }]} />
                     <View style={[styles.typingDot, { opacity: 0.4 }]} />
                   </View>
-                  <Text style={{ fontSize: 9, color: '#f43f5e', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.8 }}>Sana AI Orchestration Feed</Text>
+                  <Text style={{ fontSize: 9, color: '#f43f5e', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.8 }}>AI Agent Orchestration Feed</Text>
                 </View>
                 
                 {orchestrationLines.map((line, idx) => {

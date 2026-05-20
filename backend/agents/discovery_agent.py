@@ -6,11 +6,8 @@ Finds, evaluates, and ranks external businesses when internal matches are insuff
 import json
 import uuid
 from typing import List, Dict
-import google.generativeai as genai
 from core import settings
 import math
-
-genai.configure(api_key=settings.GEMINI_API_KEY)
 
 DISCOVERY_SYSTEM_PROMPT = """You are an autonomous External Provider Discovery Agent for ServicePilot AI.
 Your job is to act like a real-time Google Places, Maps & Business API integration.
@@ -75,20 +72,17 @@ async def discover_external_providers(intent: dict) -> dict:
     trace["reasoning"].append(f"📍 Geocoding location '{location}' to coordinates...")
     
     try:
-        model = genai.GenerativeModel(settings.GEMINI_MODEL)
         prompt = f"Find 5 businesses providing '{service_type}' near '{location}', Pakistan."
         if urgency == "emergency":
             prompt += " Prioritize businesses that are open now."
             
-        response = model.generate_content(
-            f"{DISCOVERY_SYSTEM_PROMPT}\n\nUser Request: {prompt}",
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.4,
-                max_output_tokens=1500,
-            )
+        from core.ai_manager import ai_manager
+        raw = await ai_manager.generate_content_with_retry(
+            prompt=f"User Request: {prompt}",
+            system_prompt=DISCOVERY_SYSTEM_PROMPT,
+            temperature=0.4,
+            max_output_tokens=1500
         )
-        
-        raw = response.text.strip()
         if "```json" in raw:
             raw = raw.split("```json")[1]
         if "```" in raw:

@@ -4,7 +4,11 @@ export async function fetchProviders() {
   const res = await fetch(`${API_BASE}/providers`, { cache: 'no-store' });
   if (!res.ok) return [];
   const data = await res.json();
-  return data.providers || [];
+  const provs = data.providers;
+  if (provs && typeof provs === 'object' && !Array.isArray(provs)) {
+    return [...(provs.internal || []), ...(provs.external || [])];
+  }
+  return provs || [];
 }
 
 export async function fetchBookings() {
