@@ -419,15 +419,28 @@ def db_save_trace(trace: dict) -> dict:
 def db_get_trace(booking_id: str) -> dict | None:
     db = get_db_session()
     try:
-        t = db.query(models.AITraceLog).filter(models.AITraceLog.booking_id == booking_id).first()
-        if not t:
+        logs = db.query(models.AITraceLog).filter(models.AITraceLog.booking_id == booking_id).order_by(models.AITraceLog.created_at.asc()).all()
+        if not logs:
             return None
+        
+        traces = []
+        recovery_at = None
+        for t in logs:
+            traces.append({
+                "agent": t.agent_name,
+                "input": t.input_payload.get("input") if t.input_payload else "",
+                "reasoning": t.reasoning or [],
+                "output": t.output_payload.get("output") if t.output_payload else "",
+                "status": t.status
+            })
+            if t.status == "recovered" or t.agent_name == "RecoveryAgent":
+                recovery_at = t.created_at.isoformat() if hasattr(t.created_at, "isoformat") else str(t.created_at)
+                
         return {
-            "agent": t.agent_name,
-            "input": t.input_payload.get("input") if t.input_payload else "",
-            "reasoning": t.reasoning or [],
-            "output": t.output_payload.get("output") if t.output_payload else "",
-            "status": t.status
+            "booking_id": booking_id,
+            "traces": traces,
+            "steps": traces,  # Mapped to traces for complete mobile compatibility
+            "recovery_at": recovery_at
         }
     finally:
         db.close()

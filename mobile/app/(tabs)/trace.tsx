@@ -10,9 +10,12 @@ const AGENT_CONFIG: Record<string, { color: string; icon: string }> = {
   "IntentAgent": { color: "#3b82f6", icon: "language" },
   "DiscoveryAgent": { color: "#14b8a6", icon: "globe" },
   "MatchingAgent": { color: "#a855f7", icon: "git-merge" },
+  "SchedulingAgent": { color: "#8b5cf6", icon: "time" },
   "PricingAgent": { color: "#f59e0b", icon: "cash" },
   "BookingAgent": { color: "#10b981", icon: "calendar" },
+  "PaymentAgent": { color: "#10b981", icon: "card" },
   "NotificationAgent": { color: "#64748b", icon: "notifications" },
+  "RecoveryAgent": { color: "#ef4444", icon: "warning" },
   "Dispute & RecoveryAgent": { color: "#ef4444", icon: "warning" },
 };
 

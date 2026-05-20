@@ -364,36 +364,39 @@ export default function ProvidersScreen() {
               </View>
             )}
           </View>
-
-          <View style={styles.cardActionsRow}>
-            <TouchableOpacity style={[styles.actionBtn, styles.actionBook]} onPress={() => initiateBooking(p)}>
-              <Ionicons name="calendar-outline" size={14} color="#fff" />
-              <Text style={styles.actionTextBook}>Book Now</Text>
+          {/* Primary Call-to-Actions */}
+          <View style={styles.primaryActionsRow}>
+            <TouchableOpacity style={[styles.ctaBtn, styles.ctaBook]} onPress={() => initiateBooking(p)}>
+              <Ionicons name="calendar" size={16} color="#fff" />
+              <Text style={styles.ctaText}>Book Now</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.actionBtn, styles.actionAutoBook]} onPress={() => handleAutoBook(p)}>
-              <Ionicons name="sparkles" size={14} color="#fff" />
-              <Text style={styles.actionTextBook}>AI Auto Book</Text>
+            <TouchableOpacity style={[styles.ctaBtn, styles.ctaAutoBook]} onPress={() => handleAutoBook(p)}>
+              <Ionicons name="sparkles" size={16} color="#fff" />
+              <Text style={styles.ctaText}>AI Auto Book</Text>
             </TouchableOpacity>
+          </View>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={() => handleChat(p)}>
+          {/* Secondary Utilities */}
+          <View style={styles.secondaryActionsRow}>
+            <TouchableOpacity style={styles.utilityBtn} onPress={() => handleChat(p)}>
               <Ionicons name="chatbubble-ellipses-outline" size={14} color="#4f46e5" />
-              <Text style={styles.actionTextNormal}>Chat</Text>
+              <Text style={styles.utilityBtnText}>Chat</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={() => handleCall(p.phone)}>
+            <TouchableOpacity style={styles.utilityBtn} onPress={() => handleCall(p.phone)}>
               <Ionicons name="call-outline" size={14} color="#64748b" />
-              <Text style={styles.actionTextNormal}>Call</Text>
+              <Text style={styles.utilityBtnText}>Call</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={() => handleViewProfile(p)}>
+            <TouchableOpacity style={styles.utilityBtn} onPress={() => handleViewProfile(p)}>
               <Ionicons name="person-outline" size={14} color="#64748b" />
-              <Text style={styles.actionTextNormal}>Profile</Text>
+              <Text style={styles.utilityBtnText}>Profile</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenMap(p)}>
+            <TouchableOpacity style={styles.utilityBtn} onPress={() => handleOpenMap(p)}>
               <Ionicons name="map-outline" size={14} color="#64748b" />
-              <Text style={styles.actionTextNormal}>Map</Text>
+              <Text style={styles.utilityBtnText}>Map</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -906,12 +909,57 @@ const styles = StyleSheet.create({
   detailsMiniBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#f8fafc', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#cbd5e1' },
   detailsMiniBadgeText: { fontSize: 9, fontWeight: '800', color: '#64748b' },
 
-  cardActionsRow: { flexDirection: 'row', gap: 4, marginTop: 14, justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 12 },
-  actionBtn: { flex: 0.9, height: 34, borderRadius: 10, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 },
-  actionBook: { flex: 1.4, backgroundColor: '#10b981', borderColor: '#10b981' },
-  actionAutoBook: { flex: 1.6, backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' },
-  actionTextBook: { color: '#fff', fontSize: 10, fontWeight: '900' },
-  actionTextNormal: { color: '#64748b', fontSize: 10, fontWeight: '800' },
+  primaryActionsRow: { 
+    flexDirection: 'row', 
+    gap: 8, 
+    marginTop: 14, 
+    borderTopWidth: 1, 
+    borderTopColor: '#f1f5f9', 
+    paddingTop: 12 
+  },
+  ctaBtn: { 
+    flex: 1, 
+    height: 40, 
+    borderRadius: 12, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 6 
+  },
+  ctaBook: { 
+    backgroundColor: '#10b981' 
+  },
+  ctaAutoBook: { 
+    backgroundColor: '#8b5cf6' 
+  },
+  ctaText: { 
+    color: '#fff', 
+    fontSize: 12, 
+    fontWeight: '900' 
+  },
+  secondaryActionsRow: { 
+    flexDirection: 'row', 
+    gap: 6, 
+    marginTop: 8, 
+    justifyContent: 'space-between' 
+  },
+  utilityBtn: { 
+    flex: 1, 
+    height: 34, 
+    borderRadius: 10, 
+    backgroundColor: '#f8fafc', 
+    borderWidth: 1, 
+    borderColor: '#e2e8f0', 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 3 
+  },
+  utilityBtnText: { 
+    color: '#64748b', 
+    fontSize: 10, 
+    fontWeight: '800' 
+  },
 
   // Modal styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },

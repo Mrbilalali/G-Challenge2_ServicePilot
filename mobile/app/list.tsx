@@ -333,39 +333,44 @@ export default function ProviderListScreen() {
           )}
         </>
       ) : null}
-
-      {/* Action Buttons Row - Multi-functional Marketplace actions */}
+      {/* Action Buttons Row - Restructured into modern 2-row layout */}
       <View style={styles.divider} />
-      <View style={styles.actionButtonsRow}>
-        <TouchableOpacity style={[styles.cardActionBtn, styles.bookBtn]} onPress={() => handleBookNow(p)}>
-          <Ionicons name="calendar" size={14} color="#fff" />
-          <Text style={styles.bookBtnText}>Book Now</Text>
-        </TouchableOpacity>
+      <View style={styles.actionsContainer}>
+        {/* Row 1: Primary Transactional Actions */}
+        <View style={styles.primaryActionsRow}>
+          <TouchableOpacity style={[styles.primaryActionBtn, styles.bookBtn]} onPress={() => handleBookNow(p)}>
+            <Ionicons name="calendar" size={15} color="#fff" />
+            <Text style={styles.bookBtnText}>Book Now</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.cardActionBtn, styles.autoBookBtn]} onPress={() => handleAutoBook(p)}>
-          <Ionicons name="sparkles" size={14} color="#fff" />
-          <Text style={styles.autoBookBtnText}>AI Auto Book</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={[styles.primaryActionBtn, styles.autoBookBtn]} onPress={() => handleAutoBook(p)}>
+            <Ionicons name="sparkles" size={15} color="#fff" />
+            <Text style={styles.autoBookBtnText}>AI Auto Book</Text>
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity style={[styles.cardActionBtn, styles.chatBtn]} onPress={() => handleChat(p)}>
-          <Ionicons name="chatbubble-ellipses" size={14} color="#4f46e5" />
-          <Text style={styles.chatBtnText}>Chat</Text>
-        </TouchableOpacity>
+        {/* Row 2: Secondary Communication & Details Utilities */}
+        <View style={styles.secondaryActionsRow}>
+          <TouchableOpacity style={[styles.secondaryActionBtn, styles.chatBtn]} onPress={() => handleChat(p)}>
+            <Ionicons name="chatbubble-ellipses" size={15} color="#4f46e5" />
+            <Text style={styles.chatBtnText}>Chat</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.cardActionBtn, styles.callActionBtn]} onPress={() => handleCall(p.phone)}>
-          <Ionicons name="call" size={14} color="#64748b" />
-          <Text style={styles.callActionText}>Call</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={[styles.secondaryActionBtn, styles.callActionBtn]} onPress={() => handleCall(p.phone)}>
+            <Ionicons name="call" size={15} color="#0891b2" />
+            <Text style={styles.callActionText}>Call</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.cardActionBtn, styles.profileBtn]} onPress={() => handleProviderPress(p)}>
-          <Ionicons name="person" size={14} color="#64748b" />
-          <Text style={styles.profileBtnText}>Profile</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={[styles.secondaryActionBtn, styles.profileBtn]} onPress={() => handleProviderPress(p)}>
+            <Ionicons name="person" size={15} color="#64748b" />
+            <Text style={styles.profileBtnText}>Profile</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.cardActionBtn, styles.mapBtn]} onPress={() => handleViewLocation(p)}>
-          <Ionicons name="map" size={14} color="#64748b" />
-          <Text style={styles.mapBtnText}>Map</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={[styles.secondaryActionBtn, styles.mapBtn]} onPress={() => handleViewLocation(p)}>
+            <Ionicons name="map" size={15} color="#059669" />
+            <Text style={styles.mapBtnText}>Map</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -702,21 +707,24 @@ const styles = StyleSheet.create({
   whyChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   whyChip: { backgroundColor: '#e0e7ff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   whyChipText: { fontSize: 10, fontWeight: '800', color: '#4338ca' },
-
-  actionButtonsRow: { flexDirection: 'row', gap: 4, justifyContent: 'space-between' },
-  cardActionBtn: { flex: 1.0, height: 36, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 },
-  bookBtn: { backgroundColor: '#10b981', flex: 1.3 },
-  bookBtnText: { color: '#fff', fontSize: 10, fontWeight: '900' },
-  autoBookBtn: { backgroundColor: '#8b5cf6', flex: 1.5 },
-  autoBookBtnText: { color: '#fff', fontSize: 10, fontWeight: '900' },
-  chatBtn: { backgroundColor: '#f5f3ff', borderWidth: 1, borderColor: '#ddd6fe', flex: 1.1 },
-  chatBtnText: { color: '#4f46e5', fontSize: 10, fontWeight: '900' },
-  callActionBtn: { flex: 0.8, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
-  callActionText: { color: '#64748b', fontSize: 11, fontWeight: '800' },
-  profileBtn: { flex: 0.9, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
+  actionsContainer: { gap: 8, marginTop: 4 },
+  primaryActionsRow: { flexDirection: 'row', gap: 8 },
+  primaryActionBtn: { flex: 1, height: 42, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  bookBtn: { backgroundColor: '#10b981' },
+  bookBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  autoBookBtn: { backgroundColor: '#8b5cf6' },
+  autoBookBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  
+  secondaryActionsRow: { flexDirection: 'row', gap: 6, justifyContent: 'space-between' },
+  secondaryActionBtn: { flex: 1, height: 36, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, borderWidth: 1 },
+  chatBtn: { backgroundColor: '#f5f3ff', borderColor: '#ddd6fe' },
+  chatBtnText: { color: '#4f46e5', fontSize: 11, fontWeight: '800' },
+  callActionBtn: { backgroundColor: '#ecfeff', borderColor: '#cffafe' },
+  callActionText: { color: '#0891b2', fontSize: 11, fontWeight: '800' },
+  profileBtn: { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' },
   profileBtnText: { color: '#64748b', fontSize: 11, fontWeight: '800' },
-  mapBtn: { flex: 0.8, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
-  mapBtnText: { color: '#64748b', fontSize: 11, fontWeight: '800' },
+  mapBtn: { backgroundColor: '#ecfdf5', borderColor: '#d1fae5' },
+  mapBtnText: { color: '#059669', fontSize: 11, fontWeight: '800' },
 
   sectionDivider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 8 },
   sectionDividerLine: { flex: 1, height: 1, backgroundColor: '#e2e8f0' },

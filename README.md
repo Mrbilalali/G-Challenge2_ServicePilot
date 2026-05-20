@@ -51,5 +51,18 @@ docs/               # Reasoning diagrams & flowcharts
 4. **Recovery**: Simulate provider cancellation -> Auto-rebooking of secondary technician.
 5. **Resolution**: Feedback loop & Reputation update.
 
+## 🤝 Integration & Merges
+### Teammate Collaboration Setup
+To collaborate with teammates and sync development progress:
+- **Teammate Remote URL**: `https://github.com/sajid7aug24webbpt-sketch/G-Challenge2_ServicePilot-main-`
+- **Setup Command**: `git remote add teammate https://github.com/sajid7aug24webbpt-sketch/G-Challenge2_ServicePilot-main-`
+
+### Merged Teammate Changes & conflict resolutions
+- **Backend Agents & Routes**: Integrated `backend/agents/orchestrator.py` action flows and `/posts` route endpoint in `backend/api/routes.py` with standard `127.0.0.1:8000` base address.
+- **AI Manager**: Hardened `local_mock_generate` fallback logic in `backend/core/ai_manager.py` to seamlessly handle service disruption/offline testing.
+- **Database & Traces**: Merged compiled trace history (multiple trace steps) inside `backend/core/database.py` trace getter to support robust step tracking on the mobile app.
+- **Frontend (Web Dashboard)**: Merged the Community Bulletin tab inside `frontend/src/app/page.tsx` and the `fetchPosts` utility in `frontend/src/services/api.ts` with local-storage safety fallback.
+- **Mobile (React Native App)**: Resolved layout conflict in `mobile/app/(tabs)/providers.tsx` and `mobile/app/list.tsx` to group actions into modern 2-row layout (Primary transaction actions & Secondary utilities).
+
 ---
 *Developed for Challenge 2: AI Service Orchestrator for Informal Economy*

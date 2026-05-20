@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { fetchPosts } from "../services/api";
 
 // Mock Fallback Data to guarantee UI is beautiful and populated even if backend is offline
 const MOCK_PROVIDERS = [
@@ -138,7 +139,14 @@ export default function Home() {
   const [providers, setProviders] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
+  // Community announcements state variables
+  const [posts, setPosts] = useState<any[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsSearchQuery, setPostsSearchQuery] = useState("");
+  const [postsCategoryFilter, setPostsCategoryFilter] = useState("All");
+  const [likedPosts, setLikedPosts] = useState<Record<number, boolean>>({});
+  const [postReactions, setPostReactions] = useState<Record<number, number>>({});
+  const [viewingPost, setViewingPost] = useState<any>(null);
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -373,8 +381,8 @@ export default function Home() {
   useEffect(() => {
     async function loadData() {
       try {
-        const pRes = await fetch("http://localhost:8000/api/providers");
-        const bRes = await fetch("http://localhost:8000/api/bookings");
+        const pRes = await fetch("http://127.0.0.1:8000/api/providers");
+        const bRes = await fetch("http://127.0.0.1:8000/api/bookings");
         
         let pData = [];
         if (pRes.ok) {
@@ -399,11 +407,70 @@ export default function Home() {
         setBookings(MOCK_BOOKINGS);
       } finally {
         setLoading(false);
-      }
     }
     loadData();
   }, []);
 
+  // Fetch external posts
+  useEffect(() => {
+    async function loadPosts() {
+      try {
+        setPostsLoading(true);
+        const data = await fetchPosts();
+        setPosts(data || []);
+        // Initialize mock reactions/likes
+        const reactions: Record<number, number> = {};
+        (data || []).forEach((p: any) => {
+          reactions[p.id] = Math.floor(Math.random() * 45) + 5;
+        });
+        setPostReactions(reactions);
+      } catch (err) {
+        console.error("Failed to load posts", err);
+      } finally {
+        setPostsLoading(false);
+      }
+    }
+    loadPosts();
+  }, []);
+
+  const handleLikePost = (id: number) => {
+    setLikedPosts(prev => {
+      const isLiked = !prev[id];
+      setPostReactions(reacts => ({
+        ...reacts,
+        [id]: (reacts[id] || 0) + (isLiked ? 1 : -1)
+      }));
+      return {
+        ...prev,
+        [id]: isLiked
+      };
+    });
+  };
+
+  const getPostCategory = (id: number) => {
+    if (id === 1 || id % 5 === 1) return { tag: "⚡ Safety Tip", color: "bg-amber-50 text-amber-600 border-amber-100" };
+    if (id === 2 || id % 5 === 2) return { tag: "💡 Service Hack", color: "bg-emerald-50 text-emerald-600 border-emerald-100" };
+    if (id === 12 || id % 5 === 3) return { tag: "🚨 Emergency Alert", color: "bg-rose-50 text-rose-600 border-rose-100" };
+    if (id === 23 || id % 5 === 4) return { tag: "📢 Platform News", color: "bg-indigo-50 text-indigo-600 border-indigo-100" };
+    return { tag: "🛠️ Operations Guide", color: "bg-blue-50 text-blue-600 border-blue-100" };
+  };
+
+  // Filter posts based on search query and category tags
+  const filteredPosts = posts.filter(post => {
+    const matchesSearch = post.title.toLowerCase().includes(postsSearchQuery.toLowerCase()) || 
+                          post.body.toLowerCase().includes(postsSearchQuery.toLowerCase());
+    
+    if (postsCategoryFilter === "All") return matchesSearch;
+    
+    const cat = getPostCategory(post.id).tag;
+    if (postsCategoryFilter === "Safety Tips" && cat.includes("Safety")) return matchesSearch;
+    if (postsCategoryFilter === "Service Hacks" && cat.includes("Hack")) return matchesSearch;
+    if (postsCategoryFilter === "Emergency Alerts" && cat.includes("Emergency")) return matchesSearch;
+    if (postsCategoryFilter === "Platform News" && cat.includes("News")) return matchesSearch;
+    if (postsCategoryFilter === "Operations Guides" && cat.includes("Guide")) return matchesSearch;
+    
+    return false;
+  });
   // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -467,7 +534,7 @@ export default function Home() {
         payload.selected_time_slot = selectedSlot;
       }
 
-      const res = await fetch("http://localhost:8000/api/request", {
+      const res = await fetch("http://127.0.0.1:8000/api/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -486,7 +553,7 @@ export default function Home() {
       } else if (data.action === "CONFIRM_BOOKING") {
         setBookingStep(0);
         // Refresh bookings lists
-        const freshB = await fetch("http://localhost:8000/api/bookings");
+        const freshB = await fetch("http://127.0.0.1:8000/api/bookings");
         if (freshB.ok) {
           const freshJson = await freshB.json();
           setBookings(freshJson.bookings || []);
@@ -650,6 +717,12 @@ export default function Home() {
             className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === "admin" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-600 hover:text-indigo-600"}`}
           >
             🛡️ Ops Center
+          </button>
+          <button
+            onClick={() => setActiveTab("announcements")}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === "announcements" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-600 hover:text-indigo-600"}`}
+          >
+            📢 Community Hub
           </button>
         </nav>
       </header>
@@ -1375,7 +1448,130 @@ export default function Home() {
             </div>
           </div>
         )}
+        {/* =======================================================
+            TAB 5: COMMUNITY HUB (ANNOUNCEMENTS)
+            ======================================================= */}
+        {activeTab === "announcements" && (
+          <div className="space-y-8 animate-fadeIn">
+            {/* Hero banner section */}
+            <section className="bg-white/80 backdrop-blur-md border border-indigo-50 p-8 rounded-3xl shadow-sm text-center relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-100 rounded-full blur-3xl opacity-30"></div>
+              <h2 className="text-3xl font-black tracking-tight text-slate-900 mb-2">
+                📢 ServicePilot <span className="neon-text">Community & Bulletins</span>
+              </h2>
+              <p className="text-slate-500 text-sm max-w-xl mx-auto">
+                Discover expert tips, emergency notices, platform updates, and health & safety hacks curated for the Lahore informal economy.
+              </p>
+            </section>
 
+            {/* Filter and search panel */}
+            <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm flex flex-col md:flex-row md:items-center gap-4 justify-between">
+              <input
+                type="text"
+                value={postsSearchQuery}
+                onChange={(e) => setPostsSearchQuery(e.target.value)}
+                placeholder="Search publications and announcements..."
+                className="w-full md:max-w-xs px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              
+              <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl">
+                {["All", "Safety Tips", "Service Hacks", "Emergency Alerts", "Platform News", "Operations Guides"].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setPostsCategoryFilter(cat)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                      postsCategoryFilter === cat 
+                        ? "bg-white text-indigo-600 shadow-sm" 
+                        : "text-slate-600 hover:text-indigo-600"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Posts Grid list */}
+            {postsLoading ? (
+              <div className="text-center py-20 bg-white rounded-3xl border border-slate-100">
+                <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-slate-500 text-xs font-bold">Fetching latest bulletins from network...</p>
+              </div>
+            ) : filteredPosts.length === 0 ? (
+              <div className="bg-white rounded-3xl p-16 text-center border border-slate-100">
+                <p className="text-slate-500 text-xs">No publications match your filter query. Reset search parameters.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredPosts.map((post: any) => {
+                  const { tag, color } = getPostCategory(post.id);
+                  const isLiked = likedPosts[post.id];
+                  const reactionCount = postReactions[post.id] || 0;
+
+                  return (
+                    <div
+                      key={post.id}
+                      className="glass-panel hover:neon-border rounded-3xl p-6 flex flex-col justify-between hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative group overflow-hidden"
+                    >
+                      {/* Accent color gradient strip based on category */}
+                      <div className={`absolute top-0 left-0 right-0 h-1.5 ${
+                        tag.includes("Safety") ? "bg-amber-400" :
+                        tag.includes("Hack") ? "bg-emerald-400" :
+                        tag.includes("Emergency") ? "bg-rose-400" :
+                        tag.includes("News") ? "bg-indigo-400" :
+                        "bg-blue-400"
+                      }`} />
+
+                      <div>
+                        {/* Tag */}
+                        <div className="flex justify-between items-center mb-4">
+                          <span className={`text-[8.5px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md border ${color}`}>
+                            {tag}
+                          </span>
+                          <span className="text-[9.5px] text-slate-400 font-mono">#{post.id}</span>
+                        </div>
+
+                        {/* Title */}
+                        <h4 className="font-black text-slate-900 text-sm mb-3 group-hover:text-indigo-600 transition-colors line-clamp-2">
+                          {post.title}
+                        </h4>
+
+                        {/* Snippet */}
+                        <p className="text-slate-500 text-xs leading-relaxed line-clamp-3 mb-6">
+                          {post.body}
+                        </p>
+                      </div>
+
+                      {/* Footer Actions */}
+                      <div className="flex items-center justify-between border-t border-slate-100/60 pt-4 mt-auto">
+                        <button
+                          onClick={() => handleLikePost(post.id)}
+                          className={`flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-all ${
+                            isLiked 
+                              ? "bg-rose-50 text-rose-600" 
+                              : "hover:bg-slate-50 text-slate-500"
+                          }`}
+                        >
+                          <span className={`transition-transform duration-300 ${isLiked ? "scale-125" : "group-hover:scale-110"}`}>
+                            {isLiked ? "❤️" : "🤍"}
+                          </span>
+                          <span>{reactionCount} reactions</span>
+                        </button>
+
+                        <button
+                          onClick={() => setViewingPost(post)}
+                          className="text-[10px] font-extrabold text-indigo-600 hover:text-indigo-700 bg-indigo-50/60 hover:bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100/30 transition-all"
+                        >
+                          Read Bulletin ➔
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* Viewing Provider Profile Modal */}
@@ -1461,6 +1657,78 @@ export default function Home() {
                     className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-colors"
                   >
                     Proceed with Concierge Booking
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Viewing Announcement Bulletin Modal */}
+      {viewingPost && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl relative border border-slate-100 overflow-hidden">
+            {/* Header strip */}
+            <div className={`h-3 ${
+              getPostCategory(viewingPost.id).tag.includes("Safety") ? "bg-amber-400" :
+              getPostCategory(viewingPost.id).tag.includes("Hack") ? "bg-emerald-400" :
+              getPostCategory(viewingPost.id).tag.includes("Emergency") ? "bg-rose-400" :
+              getPostCategory(viewingPost.id).tag.includes("News") ? "bg-indigo-400" :
+              "bg-blue-400"
+            }`} />
+
+            <button
+              onClick={() => setViewingPost(null)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-lg font-bold w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="p-8">
+              {/* Category tag */}
+              <div className="mb-4">
+                <span className={`text-[9px] font-black tracking-wider uppercase px-2.5 py-1 rounded-md border ${getPostCategory(viewingPost.id).color}`}>
+                  {getPostCategory(viewingPost.id).tag}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono ml-3">Bulletin Ref: #{viewingPost.id}</span>
+              </div>
+
+              {/* Title */}
+              <h3 className="text-xl font-black text-slate-950 mb-4 leading-snug">
+                {viewingPost.title}
+              </h3>
+
+              {/* Body */}
+              <p className="text-slate-600 text-xs leading-relaxed mb-6 whitespace-pre-line bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                {viewingPost.body}
+              </p>
+
+              {/* Actions */}
+              <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                  <span>📅 Published: Today</span>
+                  <span>•</span>
+                  <span>🔒 Escrow Safety Certified</span>
+                </div>
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      handleLikePost(viewingPost.id);
+                    }}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
+                      likedPosts[viewingPost.id]
+                        ? "bg-rose-50 border-rose-200 text-rose-600"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {likedPosts[viewingPost.id] ? "❤️ Liked" : "🤍 Support"}
+                  </button>
+                  <button
+                    onClick={() => setViewingPost(null)}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
+                  >
+                    Close Bulletin
                   </button>
                 </div>
               </div>

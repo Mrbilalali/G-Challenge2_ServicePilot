@@ -630,12 +630,14 @@ async def process_service_request(
                 recovery_res = await cancel_and_recover(target_booking["id"])
                 return {
                     "booking": recovery_res.get("booking"),
+                    "action": "CANCEL",
                     "message": f"Assalam o Alaikum! I have cancelled your active booking {target_booking['id']} successfully.\n\n• Secure Escrow Refunded: Rs. {target_booking['pricing']['total_amount']}\n• Status: Escrow Protection Refund Completed",
                     "traces": all_traces + recovery_res.get("traces", []),
                 }
             else:
                 return {
                     "booking": None,
+                    "action": "NONE",
                     "message": "Assalam o Alaikum! You don't have any active bookings to cancel right now.",
                     "traces": all_traces,
                 }
@@ -650,12 +652,14 @@ async def process_service_request(
                 details_str = "\n".join(details_list)
                 return {
                     "booking": bookings[0],
+                    "action": "CHECK_STATUS",
                     "message": f"Assalam o Alaikum! Here are your active booking records:\n\n{details_str}",
                     "traces": all_traces,
                 }
             else:
                 return {
                     "booking": None,
+                    "action": "NONE",
                     "message": "Assalam o Alaikum! You have no active bookings at the moment. How can I help you book one?",
                     "traces": all_traces,
                 }
@@ -664,6 +668,7 @@ async def process_service_request(
             wallet = db_get_wallet("customer")
             return {
                 "booking": None,
+                "action": "WALLET",
                 "message": f"Assalam o Alaikum! Here is your wallet transaction summary:\n\n• Available Balance: Rs. {wallet['balance']}\n• Locked Escrow Funds: Rs. {wallet['pending']}\n• Safety Deposit protection active",
                 "traces": all_traces,
             }
@@ -671,6 +676,7 @@ async def process_service_request(
         elif action == "NONE":
             return {
                 "booking": None,
+                "action": "NONE",
                 "message": intent.get("reply", "Assalam o Alaikum! I am here to help you get the best home maintenance support."),
                 "service_type": intent.get("service_type"),
                 "location": intent.get("location"),
@@ -737,6 +743,7 @@ async def process_service_request(
         if not providers:
             return {
                 "booking": None,
+                "action": "NONE",
                 "message": "No providers found internally or externally for your request. Please try a different service or location.",
                 "traces": all_traces,
             }
@@ -767,6 +774,7 @@ async def process_service_request(
         
         return {
             "booking": None,
+            "action": "RECOMMEND",
             "message": assistance_msg,
             "providers": matched_list,
             "service_type": intent.get("service_type"),

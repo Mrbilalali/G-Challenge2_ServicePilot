@@ -377,3 +377,56 @@ async def get_chat_messages(booking_id: str):
     """Get all chat messages for a booking."""
     messages = db_get_chat(booking_id)
     return {"messages": messages}
+
+
+@router.get("/posts")
+async def list_external_posts():
+    """Fetch and return posts from JSONPlaceholder API."""
+    import httpx
+    url = "https://jsonplaceholder.typicode.com/posts"
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url, timeout=5.0)
+            if res.status_code == 200:
+                # Return first 30 posts to keep it concise and beautiful
+                return res.json()[:30]
+            else:
+                # Return standard fallback if response not OK
+                raise Exception(f"HTTP response status {res.status_code}")
+    except Exception as e:
+        print(f"Error fetching external posts: {e}")
+        # Fallback to local posts in case of network issue
+        return [
+            {
+                "userId": 1,
+                "id": 1,
+                "title": "⚡ Pro Maintenance: Preparing Your Home for Summer Heatwaves",
+                "body": "Ensure your AC units are serviced and electrical wiring is inspected. Overloaded circuits are the leading cause of short circuits during the hot summer months in DHA Lahore."
+            },
+            {
+                "userId": 1,
+                "id": 2,
+                "title": "💧 Safe Plumbing: Fixing Water Pipe Corrosion Before It Causes Damage",
+                "body": "Corroded pipes can result in sudden pressure drops and expensive structural damage. Call a certified Lahore plumber for a comprehensive annual checkup."
+            },
+            {
+                "userId": 2,
+                "id": 12,
+                "title": "🚨 Emergency Safety: Quick Action on Electrical Gas Sparking",
+                "body": "If you notice sparking or burning smells from electrical sockets, switch off your main breaker immediately. Do not attempt to repair it yourself; use our safe operations portal to book an emergency electrician."
+            },
+            {
+                "userId": 3,
+                "id": 23,
+                "title": "💡 Service Hacks: Optimizing Your AC General Wash Frequency",
+                "body": "A simple AC filter wash every two weeks can reduce cooling energy bills by up to 15%. A full chemical general service is only needed twice a year."
+            },
+            {
+                "userId": 4,
+                "id": 35,
+                "title": "📢 Platform News: ServicePilot Safe Escrow Shield Launched!",
+                "body": "We have launched our automated escrow protection shield. All customer payments are now held securely in escrow and only released to the service provider once the job is fully completed to the user's satisfaction."
+            }
+        ]
+
+
