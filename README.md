@@ -1,1 +1,1 @@
-# G-Challenge2_ServicePilot-main-
+# G-Challenge2_ServicePilot-main is an AI-powered service platform designed for the informal economy. It helps users connect with local professionals like plumbers, electricians, tutors, mechanics, and other service providers through smart booking and management features.
