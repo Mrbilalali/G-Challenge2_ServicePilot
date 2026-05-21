@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 // Live Production URL (Google Cloud Run / Render) - Replace with your live URL when deployed
-export const PRODUCTION_API_URL = "https://your-cloudrun-url.a.run.app/api";
+export const PRODUCTION_API_URL = "https://servicepilot-backend-178909100297.us-central1.run.app/api";
 
 // Auto-resolve API base based on the platform the app is running on.
 export const API_BASE = PRODUCTION_API_URL.includes("your-cloudrun-url") 
