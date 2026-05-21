@@ -266,7 +266,7 @@ export default function ProviderListScreen() {
               </>
             ) : (
               <>
-                <Text style={styles.priceText}>Rs. {p.pricing?.total || p.base_rate}</Text>
+                <Text style={styles.priceText}>Rs. {Number(p.pricing?.total || p.base_rate || 0).toFixed(2)}</Text>
                 <View style={styles.scoreBadge}>
                   <Text style={styles.scoreText}>{(p.match_score || p.score * 100 || 85).toFixed(0)}% Match</Text>
                 </View>

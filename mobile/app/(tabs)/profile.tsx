@@ -33,7 +33,7 @@ export default function ProfileScreen() {
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.content} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <ScrollView style={styles.content} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
         
         {/* Stats Row */}
         <View style={styles.statsGrid}>

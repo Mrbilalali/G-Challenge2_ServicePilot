@@ -350,7 +350,7 @@ export default function TechnicianProfileScreen() {
       <View style={styles.bottomBar}>
         <View style={styles.priceContainer}>
           <Text style={styles.priceLabel}>Base Rate</Text>
-          <Text style={styles.priceValue}>Rs. {p.pricing?.total || p.base_rate || 1200}</Text>
+          <Text style={styles.priceValue}>Rs. {Number(p.pricing?.total || p.base_rate || 1200).toFixed(2)}</Text>
         </View>
 
         <View style={styles.btnRow}>

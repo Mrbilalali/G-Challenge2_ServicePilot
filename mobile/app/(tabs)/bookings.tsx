@@ -233,7 +233,7 @@ export default function BookingsScreen() {
               <View style={styles.escrowStatusBanner}>
                 <Ionicons name="lock-closed" size={12} color="#16a34a" />
                 <Text style={styles.escrowStatusText}>
-                  Escrow Guarantee: Rs. {b.pricing?.total || 1500} Held Safely
+                  Escrow Guarantee: Rs. {Number(b.pricing?.total || 1500).toFixed(2)} Held Safely
                 </Text>
                 {b.escrow_status && (
                   <View style={[styles.miniEscrowBadge, b.escrow_status === 'released' && { backgroundColor: '#d1fae5' }]}>
@@ -250,7 +250,7 @@ export default function BookingsScreen() {
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                   <TouchableOpacity onPress={() => handleViewProviderProfile(b.provider)}>
-                    <Text style={styles.providerName}>{b.provider?.name || 'Unknown Provider'}</Text>
+                    <Text style={styles.providerName} numberOfLines={1}>{b.provider?.name || 'Unknown Provider'}</Text>
                   </TouchableOpacity>
                   <Text style={styles.issueText} numberOfLines={1}>"{b.user_message || 'Standard Operating Repair request'}"</Text>
                 </View>
@@ -323,7 +323,7 @@ export default function BookingsScreen() {
                     disabled={loadingAction === b.id}
                   >
                     <Ionicons name="warning-outline" size={16} color="#ef4444" />
-                    <Text style={styles.disputeBtnText}>Hold Payment / Dispute</Text>
+                    <Text style={styles.disputeBtnText}>Dispute</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
@@ -360,7 +360,7 @@ export default function BookingsScreen() {
                       disabled={loadingAction === b.id}
                     >
                       <Ionicons name="wallet-outline" size={14} color="#fff" />
-                      <Text style={styles.releaseTextMini}>Release Rs. {b.pricing?.total || 1500}</Text>
+                      <Text style={styles.releaseTextMini}>Release Rs. {Number(b.pricing?.total || 1500).toFixed(2)}</Text>
                     </TouchableOpacity>
                   </View>
 

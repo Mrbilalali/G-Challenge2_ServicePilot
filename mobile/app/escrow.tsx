@@ -117,15 +117,15 @@ export default function EscrowScreen() {
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Service Charge</Text>
-            <Text style={styles.summaryValue}>Rs. {amount}</Text>
+            <Text style={styles.summaryValue}>Rs. {amount.toFixed(2)}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Platform Fee (10%)</Text>
-            <Text style={styles.summaryValue}>Rs. {serviceFee}</Text>
+            <Text style={styles.summaryValue}>Rs. {serviceFee.toFixed(2)}</Text>
           </View>
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>Rs. {total}</Text>
+            <Text style={styles.totalValue}>Rs. {total.toFixed(2)}</Text>
           </View>
         </View>
 
@@ -148,7 +148,7 @@ export default function EscrowScreen() {
         <TouchableOpacity style={[styles.payBtn, loading && { opacity: 0.6 }]} onPress={handlePay} disabled={loading}>
           <LinearGradient colors={["#10b981", "#059669"]} style={styles.payBtnGradient}>
             <Ionicons name="lock-closed" size={18} color="#fff" />
-            <Text style={styles.payBtnText}>{loading ? 'Processing...' : `Pay Rs. ${total} (Escrow)`}</Text>
+            <Text style={styles.payBtnText}>{loading ? 'Processing...' : `Pay Rs. ${total.toFixed(2)} (Escrow)`}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
