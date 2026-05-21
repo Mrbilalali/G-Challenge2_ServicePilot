@@ -1,11 +1,16 @@
 import { Platform } from 'react-native';
 
+// Live Production URL (Google Cloud Run / Render) - Replace with your live URL when deployed
+export const PRODUCTION_API_URL = "https://your-cloudrun-url.a.run.app/api";
+
 // Auto-resolve API base based on the platform the app is running on.
-export const API_BASE = Platform.select({
-  web: "http://localhost:8000/api",
-  android: "http://172.17.100.187:8000/api",
-  default: "http://172.17.100.187:8000/api"
-});
+export const API_BASE = PRODUCTION_API_URL.includes("your-cloudrun-url") 
+  ? Platform.select({
+      web: "http://localhost:8000/api",
+      android: "http://172.17.70.77:8000/api", // Updated to matches machine IP 172.17.70.77
+      default: "http://172.17.70.77:8000/api"
+    })
+  : PRODUCTION_API_URL;
 
 export async function submitRequest(
   message: string,
