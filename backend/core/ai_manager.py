@@ -11,6 +11,7 @@ logger = logging.getLogger("AIManager")
 class AIManager:
     _instance = None
     _lock = asyncio.Lock()
+    openai_available = False
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
@@ -86,20 +87,9 @@ class AIManager:
     def get_static_fallback(self, user_message: str) -> dict:
         msg = user_message.lower().strip()
         
-        # 1. Greetings
-        if msg in ["hi", "hello", "salam", "aoa", "hey", "assalam", "assalamualaikum"]:
-            return {
-                "reply": "Assalamualaikum 😊 Welcome to ServicePilot AI. Main aapki AI operations concierge hoon. Aapko kis type ki service (AC Repair, Plumbing, ya Electrician) chahiye today?",
-                "action": "NONE",
-                "service_type": None,
-                "location": None,
-                "timing": None,
-                "urgency": None,
-                "details": None,
-                "booking_id": None,
-                "provider_name": None
-            }
-            
+        # 1. Greetings (Disabled - let AI handle this dynamically)
+        # We no longer return static text for "hi/hello" so the OpenAI model can answer.
+        pass
         # 2. Authorization YES/CONFIRM
         if msg in ["yes", "confirm", "auth", "pay", "ha", "haan", "krdo", "do"]:
             return {
@@ -173,6 +163,34 @@ class AIManager:
             lambda: model.generate_content(full_prompt, generation_config=config)
         )
         return response.text.strip()
+
+    async def call_openai(self, prompt: str, system_prompt: str = "", temperature: float = 0.2, max_output_tokens: int = 800) -> str:
+        """OpenAI ChatCompletion call – used as PRIMARY provider."""
+        from openai import OpenAI
+        
+        api_key = settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "")
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY not configured")
+        
+        client = OpenAI(api_key=api_key)
+        model_name = settings.OPENAI_MODEL or "gpt-4o-mini"
+        
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_output_tokens,
+            )
+        )
+        return response.choices[0].message.content.strip()
 
     def local_mock_generate(self, prompt: str, system_prompt: str = "") -> str:
         # Check if the prompt is for ConversationAgent classification
@@ -381,7 +399,28 @@ class AIManager:
         if cached:
             return cached
 
-        # Check if we have an active SDK
+        # ── PRIORITY 1: OpenAI (Primary provider) ──
+        openai_key = settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "")
+        if openai_key:
+            delay = 2
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"[OpenAI PRIMARY] Attempt {attempt+1}/{max_retries}")
+                    res = await self.call_openai(prompt, system_prompt, temperature, max_output_tokens)
+                    self._set_cache(prompt, res, system_prompt)
+                    return res
+                except Exception as e:
+                    err_str = str(e).lower()
+                    is_quota = any(kw in err_str for kw in ["rate_limit", "quota", "insufficient_quota", "billing", "exceeded"])
+                    if is_quota:
+                        logger.warning(f"[OpenAI] Credits/quota exhausted: {e}. Falling back to Gemini...")
+                        break  # go to Gemini fallback
+                    logger.warning(f"[OpenAI] Call failed: {e}. Retrying...")
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(delay)
+                        delay *= 2
+
+        # ── PRIORITY 2: Gemini (Fallback when OpenAI is exhausted) ──
         if self.vertex_available or self.legacy_available:
             delay = 2
             last_err = None
@@ -389,17 +428,17 @@ class AIManager:
             for attempt in range(max_retries):
                 try:
                     if self.vertex_available:
-                        logger.info(f"Attempting Vertex AI request (Attempt {attempt+1}/{max_retries})")
+                        logger.info(f"[Gemini Vertex] Attempt {attempt+1}/{max_retries}")
                         res = await self.call_vertex(prompt, system_prompt, temperature, max_output_tokens)
                         self._set_cache(prompt, res, system_prompt)
                         return res
                     elif self.legacy_available:
-                        logger.info(f"Attempting Legacy Gemini request (Attempt {attempt+1}/{max_retries})")
+                        logger.info(f"[Gemini Legacy] Attempt {attempt+1}/{max_retries}")
                         res = await self.call_legacy(prompt, system_prompt, temperature, max_output_tokens)
                         self._set_cache(prompt, res, system_prompt)
                         return res
                     else:
-                        raise Exception("No active AI SDK configured.")
+                        raise Exception("No active Gemini SDK configured.")
                 except Exception as e:
                     last_err = e
                     err_str = str(e).lower()
@@ -407,35 +446,34 @@ class AIManager:
                     
                     if is_auth_error:
                         if self.vertex_available:
-                            logger.warning(f"Permanent authentication or service block error on Vertex AI: {e}. Disabling Vertex AI immediately.")
+                            logger.warning(f"Permanent auth error on Vertex AI: {e}. Disabling.")
                             self.vertex_available = False
                             continue
                         elif self.legacy_available:
-                            logger.warning(f"Permanent authentication or service block error on Legacy SDK: {e}. Disabling Legacy SDK immediately.")
+                            logger.warning(f"Permanent auth error on Legacy SDK: {e}. Disabling.")
                             self.legacy_available = False
                             break
                     
-                    logger.warning(f"AI Call failed: {e}. Retrying with exponential backoff...")
+                    logger.warning(f"[Gemini] Call failed: {e}. Retrying...")
                     if attempt < max_retries - 1:
                         await asyncio.sleep(delay)
                         delay *= 2
             
-            # If Vertex failed or was disabled, try legacy SDK if it's available
+            # If Vertex failed, try legacy
             if not self.vertex_available and self.legacy_available:
                 try:
-                    logger.info("Vertex AI is disabled/failed. Trying Legacy Gemini SDK...")
+                    logger.info("[Gemini] Vertex disabled. Trying Legacy SDK...")
                     res = await self.call_legacy(prompt, system_prompt, temperature, max_output_tokens)
                     self._set_cache(prompt, res, system_prompt)
                     return res
                 except Exception as e:
-                    last_err = e
                     err_str = str(e).lower()
                     if any(kw in err_str for kw in ["credentials", "api_key_service_blocked", "unauthenticated", "unauthorized", "blocked", "key not found", "api key"]):
-                        logger.warning(f"Permanent auth error on Legacy SDK fallback: {e}. Disabling Legacy SDK immediately.")
+                        logger.warning(f"Permanent auth error on Legacy fallback: {e}. Disabling.")
                         self.legacy_available = False
 
-        # Fallback to local rule-based mock agent if no SDK configured or active call failed
-        logger.warning("No active AI SDK configured or API call failed. Activating local high-fidelity mock AI agent.")
+        # ── PRIORITY 3: Local mock (last resort) ──
+        logger.warning("All AI providers failed. Activating local mock AI agent.")
         res = self.local_mock_generate(prompt, system_prompt)
         self._set_cache(prompt, res, system_prompt)
         return res

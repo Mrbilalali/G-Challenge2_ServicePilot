@@ -1,0 +1,1 @@
+{'booking': None, 'action': 'NONE', 'message': 'Hi! 😊 ServicePilot AI mein khush aamdeed! Aap kaise hain?', 'traces': [{'agent': 'ConversationAgent', 'reasoning': ["Analyzing user message: 'Hi'", 'Invoking Intent Classification & Conversational Intelligence Layer.', "Classification result: 'Greeting'. Handling conversationally."]}]}

@@ -1,4 +1,7 @@
-const API_BASE = "http://127.0.0.1:8000/api";
+// Dynamic API base: supports env variables (for production/Vercel) and local network IP fallback
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined"
+  ? `http://${window.location.hostname}:8000/api`
+  : "http://127.0.0.1:8000/api");
 
 export async function fetchProviders() {
   const res = await fetch(`${API_BASE}/providers`, { cache: 'no-store' });

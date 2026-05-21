@@ -1,0 +1,1 @@
+{'booking': None, 'action': 'NONE', 'message': 'Assalamualaikum 😊 Welcome to ServicePilot AI. Main aapki AI Operations Concierge hoon. Aapko kis type ki service (AC Repair, Plumbing, ya Electrician) chahiye today?', 'traces': [{'agent': 'GreetingAgent', 'reasoning': ["Analyzing user message: 'Hi'", 'Checking message for standard greeting keywords.', 'Greeting detected: True']}]}

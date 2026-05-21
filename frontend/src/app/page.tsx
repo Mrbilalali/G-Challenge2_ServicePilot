@@ -4,6 +4,9 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { fetchPosts } from "../services/api";
 
+// Dynamic API base: supports env variables (for production/Vercel) and local network IP fallback
+const getApiBase = () => process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? `http://${window.location.hostname}:8000/api` : "http://127.0.0.1:8000/api");
+
 // Mock Fallback Data to guarantee UI is beautiful and populated even if backend is offline
 const MOCK_PROVIDERS = [
   {
@@ -156,12 +159,17 @@ export default function Home() {
 
   // AI Chat flow state
   const [chatInput, setChatInput] = useState("");
-  const [chatMessages, setChatMessages] = useState<any[]>([
-    {
-      role: "concierge",
-      text: "Assalamualaikum 😊 Welcome to ServicePilot AI. Main aapki AI operations concierge hoon. Main aaj aapki kya madad kar sakti hoon? Aapko kis type ka specialist chahiye today?"
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  // Add initial welcome message once on component mount
+  useEffect(() => {
+    if (chatMessages.length === 0) {
+      const welcome = {
+        role: "concierge",
+        text: "Assalamualaikum 😊 Welcome to ServicePilot AI. Main aapki AI operations concierge hoon. Main aaj aapki kya madad kar sakti hoon? Aapko kis type ka specialist chahiye today?"
+      };
+      setChatMessages([welcome]);
     }
-  ]);
+  }, []);
   const [isTyping, setIsTyping] = useState(false);
   const [agentStep, setAgentStep] = useState<string | null>(null);
   const [bookingStep, setBookingStep] = useState(0);
@@ -381,8 +389,8 @@ export default function Home() {
   useEffect(() => {
     async function loadData() {
       try {
-        const pRes = await fetch("http://127.0.0.1:8000/api/providers");
-        const bRes = await fetch("http://127.0.0.1:8000/api/bookings");
+        const pRes = await fetch(`${getApiBase()}/providers`);
+        const bRes = await fetch(`${getApiBase()}/bookings`);
         
         let pData = [];
         if (pRes.ok) {
@@ -407,6 +415,7 @@ export default function Home() {
         setBookings(MOCK_BOOKINGS);
       } finally {
         setLoading(false);
+      }
     }
     loadData();
   }, []);
@@ -534,7 +543,7 @@ export default function Home() {
         payload.selected_time_slot = selectedSlot;
       }
 
-      const res = await fetch("http://127.0.0.1:8000/api/request", {
+      const res = await fetch(`${getApiBase()}/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -550,18 +559,90 @@ export default function Home() {
         setBookingStep(2);
       } else if (data.action === "BOOK_PROVIDER") {
         setBookingStep(1);
+        if (data.provider) {
+          setSelectedTech(data.provider);
+        }
+      } else if (data.action === "RECOMMEND") {
+        // Switch to marketplace tab so the provider cards are visible
+        setActiveTab("marketplace");
       } else if (data.action === "CONFIRM_BOOKING") {
         setBookingStep(0);
         // Refresh bookings lists
-        const freshB = await fetch("http://127.0.0.1:8000/api/bookings");
+        const freshB = await fetch(`${getApiBase()}/bookings`);
         if (freshB.ok) {
           const freshJson = await freshB.json();
           setBookings(freshJson.bookings || []);
         }
       }
 
-      setChatMessages(prev => [...prev, { role: "concierge", text: data.message }]);
+      if (data.service_type) {
+        setCategoryFilter(data.service_type);
+      }
+      if (data.providers && Array.isArray(data.providers) && data.providers.length > 0) {
+        // Map backend provider schema to frontend schema if necessary
+        const mappedProviders = data.providers.map((p: any) => ({
+          id: p.id || `prov_${Math.random()}`,
+          name: p.name,
+          service_type: data.service_type || "Service",
+          specializations: p.specializations || [p.specialization] || [],
+          area: p.area || p.location || "Local",
+          rating: p.rating || 4.5,
+          review_count: Math.floor(Math.random() * 100) + 20,
+          base_rate: p.rate || p.base_rate || 1000,
+          is_verified: true,
+          reliability_score: p.reliability_score || 95,
+          availability: {
+            "2026-05-20": ["10:00 AM", "1:30 PM", "5:00 PM"]
+          }
+        }));
+        setProviders(mappedProviders);
+      }
+
+      // Use backend AI response (OpenAI/Gemini) if available, local fallback for booking only
+      {
+        const backendReply = data.message || data.reply || "";
+        const lower = textToSend.toLowerCase();
+        let reply = "";
+        if (bookingStep === 2) {
+          // Confirmation authorization
+          if (lower.includes("yes") || lower.includes("confirm") || lower.includes("han") || lower.includes("krdo")) {
+            const newB = {
+              id: `bk_${Math.random().toString(36).substr(2, 9)}`,
+              customer_id: "cust_123",
+              provider: { id: selectedTech?.id || "pv_zahid_ac", name: selectedTech?.name || "Zahid AC & Fridge Repair", rate: selectedTech?.base_rate || 1200 },
+              service_type: selectedTech?.service_type || "AC Repair",
+              location: selectedTech?.area || "DHA Lahore",
+              timing: `Tomorrow (${selectedSlot})`,
+              status: "confirmed",
+              user_message: "AC cooling nahi kar raha... DHA",
+              pricing: { base_rate: selectedTech?.base_rate || 1200, fee: (selectedTech?.base_rate || 1200) * 0.1, total: (selectedTech?.base_rate || 1200) * 1.1 },
+              created_at: new Date().toISOString()
+            };
+            setBookings(prev => [newB, ...prev]);
+            setBookingStep(0);
+            reply = `🎉 **Booking Confirmed under Secure Escrow Protection!**\n\nKaam successfully lock ho chuka hai:\n• **Specialist**: ${selectedTech?.name}\n• **Time Slot**: tomorrow, ${selectedSlot}\n• **Escrow Payout Held**: Rs. ${Math.round((selectedTech?.base_rate || 1200) * 1.1)}`;
+          } else {
+            setBookingStep(0);
+            reply = "Chalein, main is selection ko cancel kar deti hoon. Aapko kisi aur specialist ya category mein service chahiye to batayein!";
+          }
+        } else if (bookingStep === 1) {
+          // Confirming the time slot
+          setBookingStep(2);
+          const rate = selectedTech?.base_rate || 1200;
+          const fee = Math.round(rate * 0.1);
+          const total = rate + fee;
+          reply = `Thik hai! Main kal ke liye aapka slot '${selectedSlot}' reserve kar rahi hoon.\n\n🧾 **Payment Receipt & Escrow Summary**:\n• Provider Base Rate: Rs. ${rate}\n• Platform Safe Escrow Fee: Rs. ${fee}\n• **Total Amount to Hold**: Rs. ${total}\n\n🔒 **Escrow Protection**: Ye funds payment release hone tak hold pe rahen ge jab tak aap satisfy nahi ho jate. Please reply with **YES** or **CONFIRM** to authorize payment lock.`;
+        } else if (backendReply && backendReply.trim().length > 5) {
+          // Backend gave a real AI-powered response (OpenAI/Gemini) — use it!
+          reply = backendReply;
+        } else {
+          // Backend returned empty — minimal fallback
+          reply = "Main aapki madad ke liye yahan hoon. Aapko kis service ki zarurat hai? AC Repair, Plumbing, ya Electrician batayein!";
+        }
+        setChatMessages(prev => [...prev, { role: "concierge", text: reply }]);
+      }
       
+      // Preserve any provider info from backend
       if (data.provider) {
         setSelectedTech(data.provider);
       }

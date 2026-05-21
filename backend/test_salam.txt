@@ -1,0 +1,1 @@
+{'booking': None, 'action': 'NONE', 'message': 'Walaikum Assalam! 😊 Aap kaise hain? ServicePilot mein aap ki madad ke liye tayyar hain!', 'traces': [{'agent': 'ConversationAgent', 'reasoning': ["Analyzing user message: 'salam'", 'Invoking Intent Classification & Conversational Intelligence Layer.', "Classification result: 'Greeting'. Handling conversationally."]}]}

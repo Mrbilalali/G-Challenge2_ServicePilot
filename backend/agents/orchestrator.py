@@ -24,16 +24,14 @@ from database import models
 class GreetingAgent:
     """Agent 1: Resolves welcoming greetings and onboarding starts."""
     async def run(self, user_message: str) -> dict:
-        msg_lower = user_message.lower()
-        is_greet = any(f" {w} " in f" {msg_lower} " for w in ["hi", "hello", "salam", "aoa", "hey", "assalam", "assalamualaikum"])
         reasoning = [
             f"Analyzing user message: '{user_message}'",
-            "Checking message for standard greeting keywords.",
-            f"Greeting detected: {is_greet}"
+            "Skipping static greeting cache to allow AI-generated dynamic greetings.",
+            "Greeting detected: False"
         ]
         return {
-            "detected": is_greet,
-            "reply": "Assalamualaikum 😊 Welcome to ServicePilot AI. Main aapki AI Operations Concierge hoon. Aapko kis type ki service (AC Repair, Plumbing, ya Electrician) chahiye today?",
+            "detected": False,
+            "reply": "",
             "reasoning": reasoning
         }
 
@@ -85,10 +83,17 @@ Supported Conversation Types:
 
 Critical Rules:
 1. ONLY set booking_workflow_allowed to true if the Conversation Type is "Booking Intent" or "Emergency Request" AND booking_confidence is High.
-2. If booking_workflow_allowed is false, you MUST provide a natural, comprehensive, helpful, and friendly reply answering their question directly (like Gemini/ChatGPT) in Roman Urdu/English mix.
-3. Absolutely DO NOT use markdown bold markers "**" anywhere in your text.
-4. Emojis (👋, 😊, 👍, ⏳, 🧾, 🎉) and clean bullet points (•) are encouraged to make the text lively and readable.
-5. In your conversational responses, you may add a soft, optional suggestion to book at the end of the text, but keep it optional (e.g. "Agar aap chahen to main check-up ke liye nearby expert technician recommend kar sakti hoon 😊"). Do not force it.
+2. If booking_workflow_allowed is false, you MUST provide a natural, comprehensive, helpful, and friendly reply answering their question directly.
+3. Language & Greeting Matching (STRICT RULES):
+   - If user says "Hi", "Hello", "Hey", strictly reply with "Hi! 😊" or "Hello! 😊" (DO NOT say "Walaikum Assalam").
+   - If user says "Salam", "Aoa", "Asalam", strictly reply with "Walaikum Assalam! 😊".
+   - ALWAYS match the exact language. If user speaks pure English, reply in pure English. If Roman Urdu, reply in Roman Urdu.
+   - 🚫 HINDI WORDS ARE STRICTLY BANNED: NEVER use "swagat", "kripya", "dhanyawad", "sahayata", "namaste", "madadgar", "chinta", "suvidha".
+   - Use only pure Roman Urdu words like "khush aamdeed", "welcome", "shukriya", "madad", "masla".
+   - DO NOT say "Aapka swagat hai", use "ServicePilot AI mein khush aamdeed!" or "Welcome to ServicePilot AI!".
+4. Absolutely DO NOT use markdown bold markers "**" anywhere in your text.
+5. Emojis (👋, 😊, 👍, ⏳, 🧾, 🎉) and clean bullet points (•) are encouraged to make the text lively and readable.
+6. In your conversational responses, you may add a soft, optional suggestion to book at the end of the text, but keep it optional. Do not force it.
 
 Your output must be a single valid JSON object with this exact structure:
 {

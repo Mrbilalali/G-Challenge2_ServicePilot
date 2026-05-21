@@ -1,0 +1,1 @@
+{'booking': None, 'action': 'NONE', 'message': 'Sure 😊\nMain AC Repair service mein aapki help karti hoon. Aap Pakistan ke kis city aur area (e.g. Lahore DHA, Karachi Clifton, Islamabad F-6) par AC Repair specialist chahte hain?', 'service_type': 'AC Repair', 'location': None, 'traces': []}

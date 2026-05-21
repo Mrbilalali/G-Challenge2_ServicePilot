@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     GOOGLE_CLOUD_LOCATION: str = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
     VERTEX_MODEL: str = os.getenv("VERTEX_MODEL", "gemini-2.0-flash")
     
+    # OpenAI (Primary AI provider)
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    
     # App
     DEBUG: bool = True
 
